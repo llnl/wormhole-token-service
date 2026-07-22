@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "token-service.fullname" . }}
+  labels:
+    {{- include "token-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "token-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "token-service.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: {{ .Chart.Name }}
+          imagePullPolicy: {{ .Values.image.app.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: token-service-config
+            - secretRef:
+                name: token-service-secrets
+          env:
+            - name: DYNACONF_DB__username
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-token-service
+                  key: POSTGRES_USER
+            - name: DYNACONF_DB__password
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-token-service
+                  key: POSTGRES_PASSWORD
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.tag | default .Chart.AppVersion }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.server.port }}
+              protocol: TCP
+          {{- with .Values.resources.app }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      initContainers:
+        - name: {{ .Chart.Name }}-init
+          image: "{{ .Values.image.app.repository }}:{{ .Values.image.app.tag | default .Chart.AppVersion }}"
+          command: ["bash", "/app/scripts/migrate-db"]
+          env:
+            - name: DYNACONF_DB__username
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-token-service
+                  key: POSTGRES_USER
+            - name: DYNACONF_DB__password
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-token-service
+                  key: POSTGRES_PASSWORD
+          envFrom:
+            - configMapRef:
+                name: token-service-config
+            - secretRef:
+                name: token-service-secrets
+

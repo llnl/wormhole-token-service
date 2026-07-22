@@ -1,0 +1,121 @@
+# Default values for token-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+config:
+  logLevel: "INFO"
+  root_path: "/token-service"
+  server:
+    host: "localhost"
+    port: 5000
+    loop: "asyncio"
+  db:
+    url: "sqlite:///test.db"
+  auth:
+    auth_name: "authlib_oidc"
+    authlib_oidc:
+      url: "https://your-domain.com/token-service"
+      discovery_url: "https://your-auth-provider.com/.well-known/openid-configuration"
+      session_config:
+        session_cookie: "token-service-session"
+        same_site: "strict"
+        https_only: True
+        max_age: 43200
+        domain: "your-domain.com"
+      strategy_name: "GenericOIDC"
+      redirect_uri: "/auth/callback"
+    jwt:
+      alg: "RS256"
+      active_kid: "1"
+      keys: {}
+    oauth_jwt:
+      jwks_url: "http://localhost:5000/.well-known/jwks.json"
+  token:
+    session_name: "_session"
+    session_lifetime_seconds: 43200
+    max_lifetime_days: 30
+  otel:
+    # traces, metrics, and logs exporters are a comma separated list e.g. console,otlp
+    traces_exporter: "console"
+    metrics_exporter: "console"
+    logs_exporter: "console"
+    otlp_traces_endpoint: ""
+    otlp_metrics_endpoint: ""
+    otlp_logs_endpoint: ""
+
+image:
+  app:
+    repository: llnl/token-service
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+  db:
+    repository: postgres
+    pullPolicy: IfNotPresent
+    tag: "17"
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 8Gi
+
+
+serviceAccount:
+  saDB:
+    name: sa-db
+    annotations: {}
+
+securityContext:
+   capabilities:
+     drop:
+     - ALL
+   readOnlyRootFilesystem: false
+   runAsNonRoot: true
+   allowPrivilegeEscalation: false
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+resources:
+  app: {}
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+  db: {}
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+service:
+  app:
+    type: ClusterIP
+    port: 80
+  db:
+    type: ClusterIP
+    port: 5432
+
+db:
+  # Database container port
+  containerPort: 5432
+  # Pod-level security context (set to null or {} to disable)
+  podSecurityContext: {}
+  # PostgreSQL data directory
+  pgdata: /var/lib/postgresql/data/pgdata
+
+volumeMounts:
+  - name: db-data
+    mountPath: /var/lib/postgresql/data
+    subPath: db

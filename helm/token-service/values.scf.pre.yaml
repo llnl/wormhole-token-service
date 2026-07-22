@@ -1,0 +1,49 @@
+config:
+  logLevel: "INFO"
+  server:
+    host: "0.0.0.0"
+    port: 8080
+    loop: "asyncio"
+  db:
+    url: "postgresql+psycopg2://tokenServiceUser@token-service-db:5432/tokenServiceDB"
+  auth:
+    authlib_oidc:
+      url: "https://lc-pre.llnl.gov/token-service"
+      discovery_url: "https://scf-auth.llnl.gov/.well-known/openid-configuration"
+      session_config:
+        domain: "lc-pre.llnl.gov"
+        same_site: "lax"
+    oauth_jwt:
+      jwks_url: "https://scf-auth.llnl.gov/oauth/jwks"
+
+
+resources:
+  app:
+    requests:
+      cpu: 300m
+      memory: 512Mi
+  db: {}
+
+namespace: token-service-pre
+
+ingress:
+  enabled: true
+  hosts:
+    - host: lc-pre.llnl.gov
+      paths:
+        - path: /token-service
+          pathType: Prefix
+          port:
+            name: http
+    - host: token-service-pre.apps.scf-lc.llnl.gov
+      paths:
+        - path: /token-service
+          pathType: Prefix
+          port:
+            name: http
+
+image:
+  db:
+    repository: image-registry.openshift-image-registry.svc:5000/openshift/postgres
+    pullPolicy: IfNotPresent
+    tag: "16-bullseye"

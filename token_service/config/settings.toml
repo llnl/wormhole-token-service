@@ -1,0 +1,52 @@
+dynaconf_merge = true
+[default]
+log_level = "INFO"
+api_version = "v1"
+
+[default.AUTH]
+auth_name = "base_auth"
+
+[default.AUTH.base_auth]
+
+[default.AUTH.authlib_oidc]
+url = "http://localhost:8443"
+
+[default.AUTH.authlib_oidc.session_config]
+session_cookie = "token-service-session"
+same_site = "strict"
+https_only = true
+max_age = 43200
+
+[default.AUTH.jwt]
+alg = "RS256"
+#lifespan in seconds
+lifespan = 300
+# must match a defined key
+active_kid = "1"
+
+# table key is the kid
+[default.AUTH.jwt.keys.1]
+key_type = "RSA"
+public_pem = ""
+private_pem = ""
+
+[default.AUTH.oauth_jwt]
+jwks_url = "http://localhost:5000/.well-known/jwks.json"
+leeway = 300
+
+[default.AUTH.admin]
+secret_key = "secret"
+
+[default.SERVER]
+host = "localhost"
+port = 5000
+
+[default.TOKEN]
+session_name = "_session"
+session_lifetime_seconds = 43200
+max_lifetime_days = 30
+
+[default.DB]
+url = "sqlite:///test.db"
+username = ""
+password = ""
