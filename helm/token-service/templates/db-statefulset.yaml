@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "token-service.fullname" . }}-db
+  labels:
+    {{- include "token-service.labels" . | nindent 4 }}-db
+spec:
+  serviceName: {{ include "token-service.fullname" . }}-db
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "token-service.selectorLabels" . | nindent 6 }}-db
+  template:
+    metadata:
+      labels:
+        {{- include "token-service.selectorLabels" . | nindent 8 }}-db
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.saDB.name }}
+      {{- with .Values.db.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.db.repository }}:{{ .Values.image.db.tag }}"
+          ports:
+            - name: db
+              containerPort: {{ .Values.db.containerPort }}
+              protocol: TCP
+          env:
+            - name: PGDATA
+              value: {{ .Values.db.pgdata | quote }}
+          envFrom:
+            - secretRef:
+                name: postgres-credentials
+          {{- with .Values.resources.db }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
+      volumes:
+        - name: db-data
+        {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "token-service.fullname" . }}-pvc
+        {{- else }}
+          emptyDir: {}
+        {{- end }}

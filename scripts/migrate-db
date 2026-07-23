@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set +x
+
+DB_SERVICE_NAME="${DB_SERVICE_NAME:-token-service-db}"
+
+echo "Waiting for database service: ${DB_SERVICE_NAME}"
+
+DB_HOST="${DB_SERVICE_NAME}.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local"
+
+until nslookup "${DB_HOST}"; do
+    echo "Waiting for postgres"
+    sleep 2
+done
+
+echo "Running alembic upgrade"
+
+alembic upgrade head

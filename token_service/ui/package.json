@@ -1,0 +1,29 @@
+{
+  "name": "token-service-ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "UI build for Token Service (bundled into token_service/static)",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "watch": "webpack --watch --config webpack.config.js",
+    "clean": "rimraf ../static/*"
+  },
+  "dependencies": {
+    "mithril": "^2.2.2"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "css-loader": "^7.1.2",
+    "html-webpack-plugin": "^5.6.0",
+    "postcss": "^8.4.47",
+    "postcss-loader": "^8.1.1",
+    "rimraf": "^6.0.1",
+    "style-loader": "^3.3.4",
+    "tailwindcss": "^3.4.10",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
