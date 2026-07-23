@@ -45,6 +45,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "requests",
+    "pre-commit>=4.6.1",
     "ruff>=0.15.15",
 ]
 

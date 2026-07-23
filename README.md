@@ -170,6 +170,15 @@ uv venv
 uv pip install -e .
 ```
 
+Pre-Commit Hook:
+
+```shell
+uvx pre-commit install
+```
+
+This runs basic `lint` checks on the repository. We highly encourage using this
+`hook` to avoid unnecessary `lint` CI failures.
+
 Generate local JWKS/settings:
 
 ```shell
