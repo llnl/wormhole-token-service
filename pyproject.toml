@@ -3,7 +3,7 @@ requires = ["setuptools >= 61.0", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "token-service"
+name = "wormhole-token-service"
 description = "Token service to manage tokens."
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -16,7 +16,7 @@ maintainers = [
     {name = "Urwah Mir", email = "mir2@llnl.gov"},
     {name = "John Consolati", email = "consolati1@llnl.gov"},
 ]
-keywords = ["token_service", "authorization"]
+keywords = ["wormhole_token_service", "authorization"]
 requires-python = ">= 3.11"
 dependencies = [
     "attrs>=26.1.0",
@@ -50,7 +50,7 @@ dev = [
 ]
 
 [project.scripts]
-token_service = 'token_service.command:cli'
+wormhole_token_service = 'token_service.command:cli'
 
 [tool.mypy]
 python_version = "3.9"
@@ -175,4 +175,4 @@ options = "check --fix REVISION_SCRIPT_FILENAME"
 
 [tool.uv]
 exclude-newer = "1 week"
-exclude-newer-package = { token-service = false }
+exclude-newer-package = { wormhole-token-service = false }
