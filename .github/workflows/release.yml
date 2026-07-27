@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  create:
+    tags:
+      - v*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # https://github.com/actions/checkout/commit/3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      # https://github.com/actions/setup-python/commit/5fda3b95a4ea91299a34e894583c3862153e4b97
+      - name: Set up Python 3.11
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11"
+
+      # https://github.com/astral-sh/setup-uv/commit/c771a70e6277c0a99b617c7a806ffedaca235ff9
+      - name: Install UV
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: uv sync -p 3.11
+      - name: Build Wheels
+        run: uv tool run hatch build
+
+      # https://github.com/actions/upload-artifact/commit/043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - name: Upload wheels
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: wheels
+          path: dist
+
+  pypi-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: Release
+    needs:
+      - build
+    permissions:
+      id-token: write
+    steps:
+      # https://github.com/actions/download-artifact/commit/3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: wheels
+          path: dist
+
+      # https://github.com/pypa/gh-action-pypi-publish/commit/ba38be9e461d3875417946c167d0b5f3d385a247
+      - name: Publish release distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247
