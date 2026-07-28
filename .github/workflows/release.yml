@@ -1,12 +1,13 @@
 name: Release
 
 on:
-  create:
+  push:
     tags:
       - "v*"
 
 jobs:
   build:
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       # https://github.com/actions/checkout/commit/3d3c42e5aac5ba805825da76410c181273ba90b1
