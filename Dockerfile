@@ -2,7 +2,7 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-ARG project_version="0.1.0"
+ARG project_version="0.1.1"
 
 COPY pyproject.toml pyproject.toml
 COPY alembic alembic
