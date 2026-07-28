@@ -20,10 +20,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install token-service==$project_version \
+RUN pip install wormhole-token-service==$project_version \
     && pip install opentelemetry-distro opentelemetry-exporter-otlp \
 # The opentelemetry-bootstrap -a install command reads through
 # active site-packages folder, and installs the corresponding instrumentation
     && opentelemetry-bootstrap -a install
 
-ENTRYPOINT ["opentelemetry-instrument", "token_service", "run"]
+ENTRYPOINT ["opentelemetry-instrument", "wormhole_token_service", "run"]
