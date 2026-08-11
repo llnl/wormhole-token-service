@@ -1,8 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-.app-title {
-  @apply text-2xl font-semibold text-blue-600;
+@import "tailwindcss" prefix(tw);
+@plugin "daisyui" {
+  prefix: "d-";
+  logs: false;
 }
-

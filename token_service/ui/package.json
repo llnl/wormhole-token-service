@@ -3,27 +3,23 @@
   "version": "0.1.1",
   "private": true,
   "description": "UI build for Token Service (bundled into token_service/static)",
+  "type": "module",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "build": "webpack --config webpack.config.js",
-    "watch": "webpack --watch --config webpack.config.js",
-    "clean": "rimraf ../static/*"
+    "dev": "vite",
+    "build": "tsc && vite build"
   },
   "dependencies": {
-    "mithril": "^2.2.2"
+    "mithril": "2.3.8"
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.20",
-    "css-loader": "^7.1.2",
-    "html-webpack-plugin": "^5.6.0",
-    "postcss": "^8.4.47",
-    "postcss-loader": "^8.1.1",
-    "rimraf": "^6.0.1",
-    "style-loader": "^3.3.4",
-    "tailwindcss": "^3.4.10",
-    "webpack": "^5.95.0",
-    "webpack-cli": "^5.1.4"
+    "@tailwindcss/vite": "4.3.3",
+    "@types/mithril": "2.2.9",
+    "daisyui": "5.7.16",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.2.1"
   }
 }
