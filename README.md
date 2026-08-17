@@ -211,7 +211,7 @@ npm ci
 npm run build
 ```
 
-The UI build is bundled into `token_service/static`.
+The UI build is bundled into `token_service/ui/dist`.
 
 ## API and Token Notes
 
