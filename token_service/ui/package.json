@@ -14,12 +14,14 @@
     "lint:fix": "prettier --write \"src/**/*.ts\" && eslint . --fix"
   },
   "dependencies": {
+    "luxon": "3.7.2",
     "mithril": "2.3.8"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/mithril": "2.2.9",
+    "@types/luxon": "3.7.4",
     "daisyui": "5.7.16",
     "eslint": "10.8.1",
     "eslint-config-prettier": "10.1.8",
