@@ -82,7 +82,7 @@ include = ["token_service*"]
 [tool.setuptools.package-data]
 token_service = [
     "config/settings.toml",
-    "static/**",
+    "ui/dist/**",
 ]
 
 [tool.pytest.ini_options]
