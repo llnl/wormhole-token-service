@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: tokenServiceDB
+      POSTGRES_USER: tokenServiceUser
+      POSTGRES_PASSWORD: tokenServicePassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tokenServiceUser -d tokenServiceDB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /workspace
+    command:
+      - bash
+      - -c
+      - >-
+        uv pip install --python /opt/venv --no-deps -e . &&
+        /opt/venv/bin/alembic upgrade head &&
+        /opt/venv/bin/wormhole_token_service run --host 0.0.0.0 --port 5000
+    environment:
+      DYNACONF_DB__url: postgresql://tokenServiceUser:tokenServicePassword@db:5432/tokenServiceDB
+      DYNACONF_DB__username: tokenServiceUser
+      DYNACONF_DB__password: tokenServicePassword
+      DYNACONF_SERVER__host: 0.0.0.0
+      DYNACONF_SERVER__port: "5000"
+      DYNACONF_AUTH__authlib_oidc__session_config__https_only: "false"
+    ports:
+      - "${TOKEN_SERVICE_PORT:-5000}:5000"
+    volumes:
+      - .:/workspace
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
