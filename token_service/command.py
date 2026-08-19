@@ -64,7 +64,7 @@ def seed_dev_user(args):
 
     try:
         create_user(UOW, models.User(uid=uid, duid=uid, is_admin=is_admin))
-        print(f"Seeded dev user {uid!r} (is_admin={is_admin})")
+        logging.info(f"Seeded dev user {uid!r} (is_admin={is_admin})")
         return
     except AlreadyExists:
         pass
@@ -73,14 +73,14 @@ def seed_dev_user(args):
     # different --admin/--no-admin actually takes effect.
     existing = get_user(UOW, uid)
     if existing.is_admin == is_admin:
-        print(f"Dev user {uid!r} already seeded (is_admin={is_admin})")
+        logging.debug(f"Dev user {uid!r} already seeded (is_admin={is_admin})")
         return
 
     if is_admin:
         add_admin(UOW, uid)
     else:
         remove_admin(UOW, uid)
-    print(f"Dev user {uid!r} updated (is_admin={is_admin})")
+    logging.debug(f"Dev user {uid!r} updated (is_admin={is_admin})")
 
 
 def generate_jwks(args):
@@ -181,7 +181,7 @@ def cli():
     )
     seed_parser.add_argument(
         "--uid",
-        help="""User to seed. Defaults to the local machine username.""",
+        help="""User to seed. Defaults to the local machine username if left blank.""",
     )
     seed_parser.add_argument(
         "--admin",
