@@ -284,10 +284,9 @@ class LocalDevAuthenticator(BaseUserAuthDependency):
 
     def setup(self, app: FastAPI) -> None:
         logger.warning(
-            "AUTH IS DISABLED: every request authenticates as %r via "
+            f"AUTH IS DISABLED: every request authenticates as {self.uid!r} via "
             "LocalDevAuthenticator. Never enable auth_name='local_dev' "
-            "outside local development.",
-            self.uid,
+            "outside local development."
         )
 
 
