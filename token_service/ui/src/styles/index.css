@@ -3,3 +3,14 @@
   prefix: "d-";
   logs: false;
 }
+
+/* Set border color for all DaisyUI elements */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-base-300);
+  }
+}
