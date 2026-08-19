@@ -26,7 +26,7 @@ services:
       - >-
         uv pip install --python /opt/venv --no-deps -e . &&
         /opt/venv/bin/alembic upgrade head &&
-        /opt/venv/bin/wormhole_token_service run --host 0.0.0.0 --port 5000
+        /opt/venv/bin/wormhole_token_service run
     environment:
       DYNACONF_DB__url: postgresql://tokenServiceUser:tokenServicePassword@db:5432/tokenServiceDB
       DYNACONF_DB__username: tokenServiceUser
