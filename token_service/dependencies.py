@@ -24,7 +24,7 @@ from .services import (
     authenticate_admin_token,
     NotFound,
 )
-from .utils import timed_lru_cache
+from .utils import local_username, timed_lru_cache
 import logging
 
 logger = logging.getLogger(__name__)
@@ -134,6 +134,7 @@ class AuthenticatorFactory:
         return {
             "base_auth": BaseUserAuthDependency,
             "authlib_oidc": AuthLibOIDCAuthenticator,
+            "local_dev": LocalDevAuthenticator,
         }
 
     def make_authenticator(self, uow, config):
@@ -234,6 +235,60 @@ class AuthLibOIDCAuthenticator(BaseUserAuthDependency):
         auth_router = self.make_router()
         if auth_router:
             app.include_router(auth_router)
+
+
+@define
+class LocalDevAuthenticator(BaseUserAuthDependency):
+    """Authenticates every request as the local machine user.
+
+    FOR LOCAL DEVELOPMENT ONLY. This performs no authentication whatsoever --
+    it presents no credential requirement and hands back a user record. It
+    exists because the shipped default (``base_auth``) cannot authenticate at
+    all, which leaves every user-auth endpoint unreachable on a dev box.
+
+    The user must already exist; seed it with::
+
+        wormhole_token_service seed-dev-user
+    """
+
+    UOW: BaseUOW
+    config: dict
+    uid: str = field()
+
+    def __hash__(self):
+        return hash(self.__class__.__name__)
+
+    @uid.default
+    def _uid(self):
+        return self.config.get("uid") or local_username()
+
+    async def __call__(self) -> User:
+        """Return the configured local user, ignoring all request state.
+
+        Deliberately takes no parameters: FastAPI builds its request contract
+        from this signature, so an empty one means no header, cookie or query
+        parameter is required of the caller.
+        """
+
+        with self.UOW() as uow:
+            try:
+                return get_user(uow, self.uid)
+            except NotFound:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=(
+                        f"Local dev user {self.uid!r} is not seeded. "
+                        f"Run: wormhole_token_service seed-dev-user"
+                    ),
+                )
+
+    def setup(self, app: FastAPI) -> None:
+        logger.warning(
+            "AUTH IS DISABLED: every request authenticates as %r via "
+            "LocalDevAuthenticator. Never enable auth_name='local_dev' "
+            "outside local development.",
+            self.uid,
+        )
 
 
 def require_admin(user_auth: BaseUserAuthDependency) -> User:

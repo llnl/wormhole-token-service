@@ -8,6 +8,14 @@ auth_name = "base_auth"
 
 [default.AUTH.base_auth]
 
+# LOCAL DEVELOPMENT ONLY. Authenticates every request as the local machine
+# user, with no credential of any kind. Opt in from settings.local.toml or
+# with DYNACONF_AUTH__auth_name=local_dev -- never by changing auth_name here.
+[default.AUTH.local_dev]
+# Defaults to the local machine username when unset.
+uid = ""
+is_admin = true
+
 [default.AUTH.authlib_oidc]
 url = "http://localhost:8443"
 
