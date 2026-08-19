@@ -32,7 +32,6 @@ dependencies = [
     "joserfc>=1.7.1",
     "bcrypt>=5.0.0",
     "tomli-w>=1.2.0",
-    "psycopg2>=2.9.12",
     "fastapi-offline==1.7.6",
     "itsdangerous>=2.2.0",
 ]
@@ -47,7 +46,10 @@ dev = [
     "requests",
     "pre-commit>=4.6.0",
     "ruff>=0.15.15",
+    "pytest-cov",
+    "psycopg2-binary>=2.9.12",
 ]
+prod = ["psycopg2>=2.9.12"]
 
 [project.scripts]
 wormhole_token_service = 'token_service.command:cli'
@@ -104,7 +106,7 @@ commit_args = "--no-verify"
 tag = true
 tag_name = "v{new_version}"
 tag_message = "Bump version: {current_version} → {new_version}"
-current_version = "0.1.1"
+current_version = "0.2.0"
 search = "{current_version}"
 replace = "{new_version}"
 
@@ -139,6 +141,7 @@ deps =
     pytest-asyncio
     requests
     tenacity
+    psycopg2-binary
 commands = pytest -m "not integration"
 
 [testenv:lint]
@@ -181,3 +184,5 @@ options = "check --fix REVISION_SCRIPT_FILENAME"
 [tool.uv]
 exclude-newer = "1 week"
 exclude-newer-package = { wormhole-token-service = false }
+default-groups = ["prod"]
+conflicts = [[{ group = "dev" }, { group = "prod" }]]

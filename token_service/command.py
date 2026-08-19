@@ -11,8 +11,19 @@ from cryptography.hazmat.primitives import serialization
 import hashlib
 import base64
 
+from token_service import models
 from token_service.server import make_server, generate_openapi_spec
 from token_service.config import settings
+from token_service.service.uow import make_sql_uow
+from token_service.services import (
+    AlreadyExists,
+    add_admin,
+    create_user,
+    get_user,
+    remove_admin,
+)
+from token_service.store.orm import make_engine
+from token_service.utils import local_username
 
 
 def generate_openapi(args):
@@ -31,6 +42,45 @@ def run(args):
         server.run()
     except KeyboardInterrupt:
         print("Token Service stopped")
+
+
+def seed_dev_user(args):
+    """Create the local machine user so LocalDevAuthenticator can resolve it.
+
+    Idempotent: safe to run on every dev-server start, which is what the
+    Makefile does.
+    """
+
+    config = settings.to_dict()
+    local_dev_config = config.get("AUTH", {}).get("local_dev", {})
+
+    uid = args.uid or local_dev_config.get("uid") or local_username()
+    if args.admin is None:
+        is_admin = local_dev_config.get("is_admin", True)
+    else:
+        is_admin = args.admin
+
+    UOW = make_sql_uow(make_engine(config.get("DB")))
+
+    try:
+        create_user(UOW, models.User(uid=uid, duid=uid, is_admin=is_admin))
+        logging.info(f"Seeded dev user {uid!r} (is_admin={is_admin})")
+        return
+    except AlreadyExists:
+        pass
+
+    # Already present -- reconcile the admin flag so re-running with a
+    # different --admin/--no-admin actually takes effect.
+    existing = get_user(UOW, uid)
+    if existing.is_admin == is_admin:
+        logging.debug(f"Dev user {uid!r} already seeded (is_admin={is_admin})")
+        return
+
+    if is_admin:
+        add_admin(UOW, uid)
+    else:
+        remove_admin(UOW, uid)
+    logging.debug(f"Dev user {uid!r} updated (is_admin={is_admin})")
 
 
 def generate_jwks(args):
@@ -124,6 +174,29 @@ def cli():
         help="""Write a settings.local.toml file if it doesn't exist.""",
     )
     generate_jwks_parser.set_defaults(func=generate_jwks)
+
+    seed_parser = subparser.add_parser(
+        "seed-dev-user",
+        help="""Seed the local machine user for local development.""",
+    )
+    seed_parser.add_argument(
+        "--uid",
+        help="""User to seed. Defaults to the local machine username if left blank.""",
+    )
+    seed_parser.add_argument(
+        "--admin",
+        dest="admin",
+        action="store_true",
+        default=None,
+        help="""Seed the user as an admin. Defaults to AUTH.local_dev.is_admin.""",
+    )
+    seed_parser.add_argument(
+        "--no-admin",
+        dest="admin",
+        action="store_false",
+        help="""Seed the user without admin rights.""",
+    )
+    seed_parser.set_defaults(func=seed_dev_user)
 
     openapi_parser = subparser.add_parser("openapi")
     openapi_parser.set_defaults(func=generate_openapi)

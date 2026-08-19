@@ -182,13 +182,13 @@ This runs basic `lint` checks on the repository. We highly encourage using this
 Generate local JWKS/settings:
 
 ```shell
-uv run token_service generate-jwks --write-settings --overwrite
+uv run wormhole_token_service generate-jwks --write-settings --overwrite
 ```
 
 Run the API:
 
 ```shell
-uv run token_service run --host localhost --port 5000
+uv run wormhole_token_service run --host localhost --port 5000
 ```
 
 Run migrations:
@@ -200,7 +200,7 @@ uv run alembic upgrade head
 Generate OpenAPI:
 
 ```shell
-uv run token_service openapi
+uv run wormhole_token_service openapi
 ```
 
 Build the UI:

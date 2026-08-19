@@ -4,7 +4,12 @@ import time
 import inspect
 import requests
 from unittest import mock
-from token_service.dependencies import require_admin, JWTAuthenticator
+from token_service.dependencies import (
+    AuthenticatorFactory,
+    LocalDevAuthenticator,
+    require_admin,
+    JWTAuthenticator,
+)
 
 # Treat unawaited coroutine warnings as errors for this file
 pytestmark = pytest.mark.filterwarnings(
@@ -51,6 +56,75 @@ async def test_require_admin_fails_when_not_admin(a_persisted_user):
         await wrapped()
     assert stub_user_auth.await_count == 1
     assert inspect.iscoroutinefunction(wrapped)
+
+
+@pytest.mark.asyncio
+async def test_local_dev_authenticator_returns_configured_user(UOW, a_persisted_user):
+    # Setup
+    auth = LocalDevAuthenticator(UOW, {"uid": a_persisted_user.uid})
+
+    # Execute
+    user = await auth()
+
+    # Verify
+    assert user.uid == a_persisted_user.uid
+
+
+@pytest.mark.asyncio
+async def test_local_dev_authenticator_defaults_to_local_username(UOW):
+    # Setup
+    with mock.patch(
+        "token_service.dependencies.local_username", return_value="machine_user"
+    ):
+        auth = LocalDevAuthenticator(UOW, {})
+
+    # Verify
+    assert auth.uid == "machine_user"
+
+
+@pytest.mark.asyncio
+async def test_local_dev_authenticator_401s_when_user_not_seeded(UOW):
+    # Setup
+    auth = LocalDevAuthenticator(UOW, {"uid": "never_seeded"})
+
+    # Execute and Verify
+    with pytest.raises(Exception) as excinfo:
+        await auth()
+    assert "seed-dev-user" in str(excinfo.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_local_dev_authenticator_takes_no_request_parameters(UOW):
+    """FastAPI derives the request contract from __call__'s signature.
+
+    An empty signature is what makes the endpoint require no credential; if a
+    parameter ever creeps in, callers start getting 422s.
+    """
+
+    auth = LocalDevAuthenticator(UOW, {"uid": "whoever"})
+    params = inspect.signature(auth.__call__).parameters
+
+    assert not params
+
+
+def test_local_dev_authenticator_is_hashable(UOW):
+    """FastAPI hashes dependency callables; @define would otherwise break it."""
+
+    assert hash(LocalDevAuthenticator(UOW, {"uid": "whoever"}))
+
+
+def test_local_dev_is_registered_with_the_factory(config):
+    """Registration plus a matching config table.
+
+    make_authenticator does config[auth_name], so a registered authenticator
+    with no settings.toml section of the same name is a startup KeyError.
+
+    NOTE: asserts on the registry rather than calling make_authenticator,
+    because tests/e2e/conftest.py patches that method for the whole session.
+    """
+
+    assert AuthenticatorFactory().authenticators["local_dev"] is LocalDevAuthenticator
+    assert "local_dev" in config["AUTH"]
 
 
 @pytest.mark.asyncio
