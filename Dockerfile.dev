@@ -29,7 +29,7 @@ ENV PATH="/root/.local/bin:$PATH"
 WORKDIR /workspace
 COPY pyproject.toml uv.lock README.md ./
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
-RUN uv sync --dev --no-install-project
+RUN uv sync --dev --no-group prod --no-install-project
 
 # The Compose command starts the application; retaining a shell here keeps
 # this image useful when it is run directly.
