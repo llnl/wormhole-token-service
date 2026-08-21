@@ -26,6 +26,7 @@ services:
       - >-
         uv pip install --python /opt/venv --no-deps -e . &&
         /opt/venv/bin/alembic upgrade head &&
+        /opt/venv/bin/wormhole_token_service seed-dev-user &&
         /opt/venv/bin/wormhole_token_service run
     environment:
       DYNACONF_DB__url: postgresql://tokenServiceUser:tokenServicePassword@db:5432/tokenServiceDB
@@ -34,6 +35,7 @@ services:
       DYNACONF_SERVER__host: 0.0.0.0
       DYNACONF_SERVER__port: "5000"
       DYNACONF_AUTH__authlib_oidc__session_config__https_only: "false"
+      DYNACONF_AUTH__auth_name: "local_dev"
     ports:
       - "${TOKEN_SERVICE_PORT:-5000}:5000"
     volumes:
