@@ -187,5 +187,3 @@ options = "check --fix REVISION_SCRIPT_FILENAME"
 [tool.uv]
 exclude-newer = "1 week"
 exclude-newer-package = { wormhole-token-service = false }
-default-groups = ["prod"]
-conflicts = [[{ group = "dev" }, { group = "prod" }]]
