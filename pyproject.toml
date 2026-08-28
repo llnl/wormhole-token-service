@@ -37,6 +37,10 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+postgres = ["psycopg2>=2.9.12"]
+all = ["psycopg2>=2.9.12"]
+
 [dependency-groups]
 dev = [
     "bump-my-version",
@@ -49,7 +53,6 @@ dev = [
     "pytest-cov",
     "psycopg2-binary>=2.9.12",
 ]
-prod = ["psycopg2>=2.9.12"]
 
 [project.scripts]
 wormhole_token_service = 'token_service.command:cli'
@@ -106,7 +109,7 @@ commit_args = "--no-verify"
 tag = true
 tag_name = "v{new_version}"
 tag_message = "Bump version: {current_version} → {new_version}"
-current_version = "0.2.0"
+current_version = "0.2.1"
 search = "{current_version}"
 replace = "{new_version}"
 
