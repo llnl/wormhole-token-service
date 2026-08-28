@@ -109,7 +109,7 @@ commit_args = "--no-verify"
 tag = true
 tag_name = "v{new_version}"
 tag_message = "Bump version: {current_version} → {new_version}"
-current_version = "0.2.1"
+current_version = "0.2.2"
 search = "{current_version}"
 replace = "{new_version}"
 
@@ -187,5 +187,3 @@ options = "check --fix REVISION_SCRIPT_FILENAME"
 [tool.uv]
 exclude-newer = "1 week"
 exclude-newer-package = { wormhole-token-service = false }
-default-groups = ["prod"]
-conflicts = [[{ group = "dev" }, { group = "prod" }]]
