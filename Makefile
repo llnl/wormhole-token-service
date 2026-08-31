@@ -10,7 +10,7 @@ sync-dev:
 	uv sync --dev
 
 sync-prod:
-	uv sync --frozen --no-dev --extra postgres
+	uv sync --frozen --no-dev --extra prod
 
 lock-check:
 	uv lock --check

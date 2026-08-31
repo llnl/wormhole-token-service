@@ -39,7 +39,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 postgres = ["psycopg2>=2.9.12"]
-all = ["wormhole-token-service[postgres]"]
+prod = ["wormhole-token-service[postgres]"]
 
 [dependency-groups]
 dev = [
@@ -189,5 +189,5 @@ exclude-newer = "1 week"
 exclude-newer-package = { wormhole-token-service = false }
 conflicts = [
     [{ extra = "postgres" }, { group = "dev" }],
-    [{ extra = "all" }, { group = "dev" }],
+    [{ extra = "prod" }, { group = "dev" }],
 ]

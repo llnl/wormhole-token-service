@@ -10,7 +10,7 @@ conflicts = [[
     { package = "wormhole-token-service", extra = "postgres" },
     { package = "wormhole-token-service", group = "dev" },
 ], [
-    { package = "wormhole-token-service", extra = "all" },
+    { package = "wormhole-token-service", extra = "prod" },
     { package = "wormhole-token-service", group = "dev" },
 ]]
 
@@ -59,7 +59,7 @@ version = "4.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "idna" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev')" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/19/14/2c5dd9f512b66549ae92767a9c7b330ae88e1932ca57876909410251fe13/anyio-4.13.0.tar.gz", hash = "sha256:334b70e641fd2221c1505b3890c69882fe4a2df910cba14d97019b90b24439dc", size = 231622, upload-time = "2026-03-24T12:59:09.671Z" }
 wheels = [
@@ -201,7 +201,7 @@ name = "cffi"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pycparser", marker = "implementation_name != 'PyPy' or (extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev')" },
+    { name = "pycparser", marker = "implementation_name != 'PyPy' or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/eb/56/b1ba7935a17738ae8453301356628e8147c79dbb825bcbc73dc7401f9846/cffi-2.0.0.tar.gz", hash = "sha256:44d1b5909021139fe36001ae048dbdde8214afa20200eda0f64c068cac5d5529", size = 523588, upload-time = "2025-09-08T23:24:04.541Z" }
 wheels = [
@@ -369,7 +369,7 @@ name = "click"
 version = "8.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/bb/63/f9e1ea081ce35720d8b92acde70daaedace594dc93b693c869e0d5910718/click-8.3.3.tar.gz", hash = "sha256:398329ad4837b2ff7cbe1dd166a4c0f8900c3ca3a218de04466f38f6497f18a2", size = 328061, upload-time = "2026-04-22T15:11:27.506Z" }
 wheels = [
@@ -509,7 +509,7 @@ name = "cryptography"
 version = "48.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cffi", marker = "platform_python_implementation != 'PyPy' or (extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev')" },
+    { name = "cffi", marker = "platform_python_implementation != 'PyPy' or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9f/a9/db8f313fdcd85d767d4973515e1db101f9c71f95fced83233de224673757/cryptography-48.0.0.tar.gz", hash = "sha256:5c3932f4436d1cccb036cb0eaef46e6e2db91035166f1ad6505c3c9d5a635920", size = 832984, upload-time = "2026-05-04T22:59:38.133Z" }
 wheels = [
@@ -1870,7 +1870,7 @@ name = "sqlalchemy"
 version = "2.0.49"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "greenlet", marker = "platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64' or (extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev')" },
+    { name = "greenlet", marker = "platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64' or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev')" },
     { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/09/45/461788f35e0364a8da7bda51a1fe1b09762d0c32f12f63727998d85a873b/sqlalchemy-2.0.49.tar.gz", hash = "sha256:d15950a57a210e36dd4cec1aac22787e2a4d57ba9318233e2ef8b2daf9ff2d5f", size = 9898221, upload-time = "2026-04-03T16:38:11.704Z" }
@@ -1924,7 +1924,7 @@ version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev')" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/08/a3/84e821cc54b4ab50ae6dbc6ac3800a651b65ec35f045cc73785380654057/starlette-1.0.1.tar.gz", hash = "sha256:512399c5f1de7fac99c88572212ded9ddeddef2fb32afa82d724000e88b38f4f", size = 2659596, upload-time = "2026-05-21T21:58:58.433Z" }
 wheels = [
@@ -2081,11 +2081,11 @@ wheels = [
 
 [package.optional-dependencies]
 standard = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev')" },
     { name = "httptools" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
-    { name = "uvloop", marker = "(platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32') or (platform_python_implementation == 'PyPy' and extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (platform_python_implementation == 'PyPy' and extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (sys_platform == 'cygwin' and extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (sys_platform == 'cygwin' and extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (sys_platform == 'win32' and extra == 'extra-22-wormhole-token-service-all' and extra == 'group-22-wormhole-token-service-dev') or (sys_platform == 'win32' and extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev')" },
+    { name = "uvloop", marker = "(platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32') or (platform_python_implementation == 'PyPy' and extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (platform_python_implementation == 'PyPy' and extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev') or (sys_platform == 'cygwin' and extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (sys_platform == 'cygwin' and extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev') or (sys_platform == 'win32' and extra == 'extra-22-wormhole-token-service-postgres' and extra == 'group-22-wormhole-token-service-dev') or (sys_platform == 'win32' and extra == 'extra-22-wormhole-token-service-prod' and extra == 'group-22-wormhole-token-service-dev')" },
     { name = "watchfiles" },
     { name = "websockets" },
 ]
@@ -2349,10 +2349,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-all = [
+postgres = [
     { name = "psycopg2" },
 ]
-postgres = [
+prod = [
     { name = "psycopg2" },
 ]
 
@@ -2387,9 +2387,9 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.49" },
     { name = "tenacity", specifier = ">=9.1.4" },
     { name = "tomli-w", specifier = ">=1.2.0" },
-    { name = "wormhole-token-service", extras = ["postgres"], marker = "extra == 'all'" },
+    { name = "wormhole-token-service", extras = ["postgres"], marker = "extra == 'prod'" },
 ]
-provides-extras = ["postgres", "all"]
+provides-extras = ["postgres", "prod"]
 
 [package.metadata.requires-dev]
 dev = [

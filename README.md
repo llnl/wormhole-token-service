@@ -153,9 +153,9 @@ Use the appropriate overlay and namespace for the target deployment.
 
 CI builds the UI, publishes OpenAPI, publishes the Python package and container
 image, copies images into OpenShift, and deploys with Helm. The container
-installs `wormhole-token-service[postgres]` so the image gets the source build of
-`psycopg2`; installing the package without the `postgres` extra leaves it with
-no Postgres driver.
+installs `wormhole-token-service[prod]` so the image gets the source build of
+`psycopg2`; installing the package without the `prod` extra leaves it with no
+Postgres driver.
 
 ## Development
 
@@ -179,12 +179,12 @@ compiler; it comes from the `dev` dependency group. Production installs the
 and a compiler:
 
 ```shell
-pip install "wormhole-token-service[postgres]"
+pip install "wormhole-token-service[prod]"
 ```
 
 The two are the same import package and must never share an environment, so
 they are declared as conflicting in `[tool.uv]`. Use `uv sync --dev` for
-development and `uv sync --no-dev --extra postgres` for a production-like
+development and `uv sync --no-dev --extra prod` for a production-like
 environment; `--no-dev` is required because uv enables the `dev` group by
 default, and the extra conflicts with it.
 
