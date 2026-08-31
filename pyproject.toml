@@ -39,7 +39,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 postgres = ["psycopg2>=2.9.12"]
-all = ["psycopg2>=2.9.12"]
+all = ["wormhole-token-service[postgres]"]
 
 [dependency-groups]
 dev = [
@@ -109,7 +109,7 @@ commit_args = "--no-verify"
 tag = true
 tag_name = "v{new_version}"
 tag_message = "Bump version: {current_version} → {new_version}"
-current_version = "0.2.2"
+current_version = "0.2.3"
 search = "{current_version}"
 replace = "{new_version}"
 
@@ -187,3 +187,7 @@ options = "check --fix REVISION_SCRIPT_FILENAME"
 [tool.uv]
 exclude-newer = "1 week"
 exclude-newer-package = { wormhole-token-service = false }
+conflicts = [
+    [{ extra = "postgres" }, { group = "dev" }],
+    [{ extra = "all" }, { group = "dev" }],
+]

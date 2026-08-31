@@ -2,7 +2,7 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-ARG project_version="0.2.2"
+ARG project_version="0.2.3"
 
 COPY pyproject.toml pyproject.toml
 COPY alembic alembic
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install "wormhole-token-service[all]"==$project_version \
+RUN pip install "wormhole-token-service[all]==$project_version" \
     && pip install opentelemetry-distro opentelemetry-exporter-otlp \
 # The opentelemetry-bootstrap -a install command reads through
 # active site-packages folder, and installs the corresponding instrumentation
