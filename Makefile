@@ -1,4 +1,5 @@
-.PHONY: prod dev test run-app run-dev run-prod pre-commit jwks migrate openapi seed ui
+.PHONY: sync-dev sync-prod lock-check test run-dev run-prod pre-commit jwks \
+        migrate openapi seed
 
 .NOTPARALLEL:
 
@@ -6,10 +7,13 @@ HOST ?= localhost
 PORT ?= 5000
 
 sync-dev:
-	uv sync --dev --no-default-groups
+	uv sync --dev
 
 sync-prod:
-	uv sync --frozen
+	uv sync --frozen --no-dev --extra postgres
+
+lock-check:
+	uv lock --check
 
 test: sync-dev
 	uvx tox -e py311

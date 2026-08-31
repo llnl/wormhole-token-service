@@ -152,7 +152,10 @@ helm upgrade --install token-service ./helm/token-service -f ./helm/token-servic
 Use the appropriate overlay and namespace for the target deployment.
 
 CI builds the UI, publishes OpenAPI, publishes the Python package and container
-image, copies images into OpenShift, and deploys with Helm.
+image, copies images into OpenShift, and deploys with Helm. The container
+installs `wormhole-token-service[postgres]` so the image gets the source build of
+`psycopg2`; installing the package without the `postgres` extra leaves it with
+no Postgres driver.
 
 ## Development
 
@@ -166,9 +169,24 @@ Requirements:
 Install locally:
 
 ```shell
-uv venv
-uv pip install -e .
+uv sync --dev
 ```
+
+The Postgres driver differs by environment. Local development and the dev
+container use `psycopg2-binary`, which installs as a wheel and needs no
+compiler; it comes from the `dev` dependency group. Production installs the
+`postgres` extra, which pulls the source build of `psycopg2` and needs `libpq`
+and a compiler:
+
+```shell
+pip install "wormhole-token-service[postgres]"
+```
+
+The two are the same import package and must never share an environment, so
+they are declared as conflicting in `[tool.uv]`. Use `uv sync --dev` for
+development and `uv sync --no-dev --extra postgres` for a production-like
+environment; `--no-dev` is required because uv enables the `dev` group by
+default, and the extra conflicts with it.
 
 Pre-Commit Hook:
 
