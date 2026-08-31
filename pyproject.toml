@@ -52,6 +52,8 @@ dev = [
     "ruff>=0.15.15",
     "pytest-cov",
     "psycopg2-binary>=2.9.12",
+    "gssapi>=1.9,<2",
+    "k5test>=0.10.3",
 ]
 
 [project.scripts]
