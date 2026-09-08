@@ -5,8 +5,6 @@ services:
       POSTGRES_DB: tokenServiceDB
       POSTGRES_USER: tokenServiceUser
       POSTGRES_PASSWORD: tokenServicePassword
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
