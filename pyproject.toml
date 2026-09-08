@@ -81,8 +81,19 @@ strict_equality = true
 [tool.setuptools.dynamic]
 version = {attr = "token_service.__version__"}
 
+[tool.setuptools]
+# Ship only the data files explicitly listed in package-data below. The UI is
+# built inside token_service/ui before the wheel is packaged, and its
+# node_modules tree contains stray .py files that auto-inclusion would
+# otherwise sweep up into the wheel.
+include-package-data = false
+
 [tool.setuptools.packages.find]
 include = ["token_service*"]
+# token_service/ui is the frontend source tree, not an importable package; its
+# built assets ship via package-data (ui/dist/** below), so keep package
+# discovery out of the ui/ tree entirely.
+exclude = ["token_service.ui*"]
 
 [tool.setuptools.package-data]
 token_service = [

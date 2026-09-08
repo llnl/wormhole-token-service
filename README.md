@@ -229,7 +229,10 @@ npm ci
 npm run build
 ```
 
-The UI build is bundled into `token_service/ui/dist`.
+The UI build is bundled into `token_service/ui/dist`. `make build` (and the
+release workflow) run this step before `uv build --wheel`, so `ui/dist/**` is
+packaged into the wheel and `token_service/server.py` can mount it at `/` when
+the service is deployed.
 
 ## API and Token Notes
 
