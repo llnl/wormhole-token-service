@@ -1,4 +1,4 @@
-.PHONY: sync-dev sync-prod lock lock-check build-ui build refresh test run-dev \
+.PHONY: sync-dev sync-prod lock lock-check build refresh test run-dev \
         run-prod pre-commit jwks migrate openapi seed
 
 .NOTPARALLEL:
@@ -18,12 +18,7 @@ lock-check:
 lock:
 	uv lock
 
-# Build the frontend into token_service/ui/dist so the wheel can bundle it
-# The server mounts these assets at / when present.
-build-ui:
-	cd token_service/ui && npm ci && npm run build
-
-build: build-ui
+build:
 	rm -rf dist/
 	uv build --wheel
 

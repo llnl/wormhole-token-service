@@ -1,10 +1,8 @@
 from attrs import define, field
 import json
 import uvicorn
-from pathlib import Path
 from fastapi_offline import FastAPIOffline
 from fastapi import APIRouter
-from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 
 from token_service import __version__
@@ -98,18 +96,6 @@ def make_app(config: dict) -> FastAPIOffline:
 
     # Add middleware if needed
     auth.setup(app)
-
-    # Mount UI static asset files at the application root
-    try:
-        app.mount(
-            "/",
-            StaticFiles(
-                directory=str(Path(__file__).parent / "ui" / "dist"), html=True
-            ),
-        )
-    except RuntimeError:
-        # If static directory is missing in some environments, skip mounting
-        pass
 
     return app
 
