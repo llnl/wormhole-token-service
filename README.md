@@ -24,8 +24,7 @@ exchanges valid tokens or MFA/OIDC sessions for short-lived JWTs, publishes
 JWKS for downstream validation, and exposes internal admin APIs for identity
 sync and impersonated token creation. Major dependencies include FastAPI,
 fastapi-offline, SQLAlchemy, Alembic, Dynaconf, Authlib, bcrypt, Pendulum,
-psycopg2, attrs, tenacity, requests, and multimethod. The bundled UI is built
-with Node 18 or newer, Mithril, Tailwind, and Webpack.
+psycopg2, attrs, tenacity, requests, and multimethod.
 
 The service uses a layered architecture. `token_service/command.py` provides
 the CLI entry point for `run`, `openapi`, and `generate-jwks`;
@@ -49,7 +48,7 @@ without managing a separate credential per service.
 ```mermaid
 flowchart LR
     User["User or automation"]
-    UI["Token Service UI/API"]
+    API["Token Service API"]
     DB["Postgres"]
     JWKS["JWKS endpoint"]
     Holepunch["Holepunch"]
@@ -57,11 +56,11 @@ flowchart LR
     Airlock["Airlock"]
     App["Wormhole app"]
 
-    User --> UI
-    UI --> DB
-    UI --> JWKS
-    Holepunch --> UI
-    Registry --> UI
+    User --> API
+    API --> DB
+    API --> JWKS
+    Holepunch --> API
+    Registry --> API
     Airlock -. validates JWTs .-> JWKS
     Holepunch --> App
     Registry --> App
@@ -151,7 +150,7 @@ helm upgrade --install token-service ./helm/token-service -f ./helm/token-servic
 
 Use the appropriate overlay and namespace for the target deployment.
 
-CI builds the UI, publishes OpenAPI, publishes the Python package and container
+CI publishes OpenAPI, publishes the Python package and container
 image, copies images into OpenShift, and deploys with Helm. The container
 installs `wormhole-token-service[all]` so the image gets the source build of
 `psycopg2`; installing the package without the `all` extra leaves it with no
@@ -163,7 +162,6 @@ Requirements:
 
 - Python 3.11 or newer
 - [uv](https://docs.astral.sh/uv/)
-- Node 18 or newer for the UI
 - Postgres for migration work
 
 Install locally:
@@ -220,19 +218,6 @@ Generate OpenAPI:
 ```shell
 uv run wormhole_token_service openapi
 ```
-
-Build the UI:
-
-```shell
-cd token_service/ui
-npm ci
-npm run build
-```
-
-The UI build is bundled into `token_service/ui/dist`. `make build` (and the
-release workflow) run this step before `uv build --wheel`, so `ui/dist/**` is
-packaged into the wheel and `token_service/server.py` can mount it at `/` when
-the service is deployed.
 
 ## API and Token Notes
 
