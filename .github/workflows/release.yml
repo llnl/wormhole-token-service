@@ -74,6 +74,12 @@ jobs:
       # https://github.com/actions/checkout/commit/3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      # https://github.com/docker/setup-qemu-action/commit/99012661954931238ded8c8b007157a8430204e1
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1
+      # https://github.com/docker/setup-buildx-action/commit/f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
       # https://github.com/docker/login-action/commit/371161bbe7024a29a25c5e19bfcbc0804fe9ad2c
       - name: Log in to the Container registry
         uses: docker/login-action@371161bbe7024a29a25c5e19bfcbc0804fe9ad2c
@@ -93,6 +99,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
