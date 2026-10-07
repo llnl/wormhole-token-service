@@ -2387,7 +2387,11 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "gssapi" },
     { name = "psycopg2" },
+]
+kerberos = [
+    { name = "gssapi" },
 ]
 postgres = [
     { name = "psycopg2" },
@@ -2417,6 +2421,7 @@ requires-dist = [
     { name = "dynaconf", specifier = ">=3.2.13" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.136.1" },
     { name = "fastapi-offline", specifier = "==1.7.6" },
+    { name = "gssapi", marker = "extra == 'kerberos'", specifier = ">=1.9,<2" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "joserfc", specifier = ">=1.7.1" },
     { name = "multimethod", specifier = ">=2.0.2" },
@@ -2426,9 +2431,9 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.49" },
     { name = "tenacity", specifier = ">=9.1.4" },
     { name = "tomli-w", specifier = ">=1.2.0" },
-    { name = "wormhole-token-service", extras = ["postgres"], marker = "extra == 'all'" },
+    { name = "wormhole-token-service", extras = ["kerberos", "postgres"], marker = "extra == 'all'" },
 ]
-provides-extras = ["postgres", "all"]
+provides-extras = ["postgres", "kerberos", "all"]
 
 [package.metadata.requires-dev]
 dev = [
