@@ -11,9 +11,11 @@ COPY token_service/config/settings.toml settings.local.toml
 
 RUN chgrp -R 0 /app && chmod -R g=u /app
 
-# Install system dependencies for psycopg2
+# libpq-dev for psycopg2
+# libkrb5-dev for gssapi (krb5 headers and krb5-config on PATH)
 RUN apt-get update && apt-get install -y \
     gcc \
+    libkrb5-dev \
     libpq-dev \
     dnsutils \
     curl \

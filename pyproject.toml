@@ -39,19 +39,22 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 postgres = ["psycopg2>=2.9.12"]
-all = ["wormhole-token-service[postgres]"]
+kerberos = ["gssapi>=1.9,<2"]
+all = ["wormhole-token-service[postgres,kerberos]"]
 
 [dependency-groups]
 dev = [
     "bump-my-version",
+    "gssapi>=1.9,<2",
     "jedi",
+    "k5test>=0.10.3",
+    "pre-commit>=4.6.0",
+    "psycopg2-binary>=2.9.12",
     "pytest",
     "pytest-asyncio",
-    "requests",
-    "pre-commit>=4.6.0",
-    "ruff>=0.15.15",
     "pytest-cov",
-    "psycopg2-binary>=2.9.12",
+    "requests",
+    "ruff>=0.15.15",
 ]
 
 [project.scripts]

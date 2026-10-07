@@ -22,9 +22,6 @@ build:
 	rm -rf dist/
 	uv build --wheel
 
-# Everything derived from pyproject.toml, regenerated in dependency order. Run
-# this after changing dependencies or extras: the lockfile records extra names,
-# and the wheel bakes in the metadata, so both go stale on a rename.
 refresh: lock lock-check build
 
 test: sync-dev

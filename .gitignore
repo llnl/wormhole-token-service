@@ -133,6 +133,11 @@ node_modules/
 # Ignore jwks dir for local dev
 jwks/
 
+# Kerberos. A keytab is a private key in a file
+*.keytab
+krb5.conf
+krb5cc_*
+
 # Ignore settings.local.toml
 settings.local.toml
 
