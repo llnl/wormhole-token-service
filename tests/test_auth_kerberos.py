@@ -59,7 +59,6 @@ def test_as_realm_tuple_normalises_both_config_shapes(value, expected):
 
 def test_principal_to_uid_strips_the_realm():
     acceptor = make_acceptor(allowed_realms=["EXAMPLE.GOV"])
-
     assert acceptor.principal_to_uid("alice@EXAMPLE.GOV") == "alice"
 
 
@@ -90,7 +89,6 @@ def test_multiple_allowed_realms_refuse_to_start():
 
 def test_a_single_realm_from_an_env_var_string_is_accepted():
     acceptor = make_acceptor(allowed_realms="EXAMPLE.GOV")
-
     assert acceptor.principal_to_uid("alice@EXAMPLE.GOV") == "alice"
 
 

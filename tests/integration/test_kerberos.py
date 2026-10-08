@@ -97,7 +97,6 @@ def test_endpoint_is_mounted_under_the_versioned_prefix(krb_app, config):
     version = config["API_VERSION"]
 
     assert f"/api/{version}/krb/token" in paths
-    # bind_endpoints emits one mount per declared version.
     assert "/api/latest/krb/token" in paths
 
 
@@ -127,7 +126,6 @@ def test_endpoint_is_absent_when_disabled(krb_base_config):
     cfg["AUTH"] = {**cfg["AUTH"], "kerberos": {"enabled": False}}
 
     paths = {route.path for route in make_app(cfg).routes}
-
     assert not any("/krb/token" in path for path in paths)
 
 

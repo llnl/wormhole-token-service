@@ -35,8 +35,8 @@ def test_raw_handshake_completes(krb5_env, service_name):
     server_ctx = gssapi.SecurityContext(
         creds=gssapi.Credentials(usage="accept", name=service_name)
     )
-    server_ctx.step(client_token)
 
+    server_ctx.step(client_token)
     assert server_ctx.complete
     assert str(server_ctx.initiator_name) == krb5_env.user_princ
 
@@ -53,8 +53,8 @@ def test_mutual_auth_token_is_returned(krb5_env, service_name):
     server_ctx = gssapi.SecurityContext(
         creds=gssapi.Credentials(usage="accept", name=service_name)
     )
-    server_token = server_ctx.step(client_token)
 
+    server_token = server_ctx.step(client_token)
     assert server_token
     client_ctx.step(server_token)
     assert client_ctx.complete
