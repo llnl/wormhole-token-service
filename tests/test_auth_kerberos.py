@@ -1,7 +1,5 @@
 import os
 import pytest
-import sys
-import types
 from unittest import mock
 
 from token_service.auth.kerberos import (
@@ -12,9 +10,8 @@ from token_service.auth.kerberos import (
     as_realm_tuple,
     gss_name,
 )
-from tests.helpers.fake_deps import fake_gssapi
+from tests.helpers.fake_deps import fake_gssapi, fake_handshake
 from token_service.config import settings
-from token_service.utils import expand_path
 
 
 def make_acceptor(**config):
@@ -34,26 +31,16 @@ def make_acceptor(**config):
 def test_gss_name_picks_the_type_from_the_spelling(spn, expect_principal_form):
     """Both GSSAPI name forms are accepted; the type follows the spelling."""
 
-    module = types.ModuleType("gssapi")
-    raw = types.ModuleType("gssapi.raw")
-
-    class NameType:
-        kerberos_principal = "KERBEROS_PRINCIPAL"
-        hostbased_service = "HOSTBASED_SERVICE"
-
-    raw.NameType = NameType
-    module.raw = raw
-    module.Name = mock.MagicMock()
-
-    with mock.patch.dict(sys.modules, {"gssapi": module, "gssapi.raw": raw}):
+    with fake_gssapi() as gssapi:
         gss_name(spn)
 
+    name_type = gssapi.raw.NameType
     expected = (
-        NameType.kerberos_principal
+        name_type.kerberos_principal
         if expect_principal_form
-        else NameType.hostbased_service
+        else name_type.hostbased_service
     )
-    module.Name.assert_called_once_with(spn, expected)
+    gssapi.Name.assert_called_once_with(spn, expected)
 
 
 @pytest.mark.parametrize(
@@ -137,29 +124,25 @@ def test_principal_without_a_realm_is_rejected():
 
 
 def test_a_rejected_token_becomes_a_kerberos_auth_error():
-    # `step` distinguishes three things the caller must be able to tell
-    # apart: a rejection, an unfinished exchange and a proven principal.
-    acceptor = make_acceptor(allowed_realms=["EXAMPLE.GOV"])
+    acceptor = make_acceptor()
     ctx = mock.MagicMock()
 
-    with mock.patch.object(type(acceptor), "creds", new_callable=mock.PropertyMock):
-        with fake_gssapi(ctx) as gssapi:
-            ctx.step.side_effect = gssapi.exceptions.GSSError("rejected")
-            with pytest.raises(KerberosAuthError):
-                acceptor.step(b"garbage")
+    with fake_handshake(ctx) as gssapi:
+        ctx.step.side_effect = gssapi.exceptions.GSSError("rejected")
+        with pytest.raises(KerberosAuthError):
+            acceptor.step(b"garbage")
 
 
 def test_an_incomplete_context_is_a_result_not_an_error():
     """Multi-leg negotiation is a normal outcome needing another round trip."""
 
-    acceptor = make_acceptor(allowed_realms=["EXAMPLE.GOV"])
+    acceptor = make_acceptor()
     ctx = mock.MagicMock()
     ctx.step.return_value = b"continue-me"
     ctx.complete = False
 
-    with mock.patch.object(type(acceptor), "creds", new_callable=mock.PropertyMock):
-        with fake_gssapi(ctx):
-            result = acceptor.step(b"garbage")
+    with fake_handshake(ctx):
+        result = acceptor.step(b"garbage")
 
     assert result.complete is False
     assert result.token == b"continue-me"
@@ -167,15 +150,14 @@ def test_an_incomplete_context_is_a_result_not_an_error():
 
 
 def test_a_completed_context_carries_the_initiator_principal():
-    acceptor = make_acceptor(allowed_realms=["EXAMPLE.GOV"])
+    acceptor = make_acceptor()
     ctx = mock.MagicMock()
     ctx.step.return_value = b"server-token"
     ctx.complete = True
     ctx.initiator_name = "alice@EXAMPLE.GOV"
 
-    with mock.patch.object(type(acceptor), "creds", new_callable=mock.PropertyMock):
-        with fake_gssapi(ctx):
-            result = acceptor.step(b"garbage")
+    with fake_handshake(ctx):
+        result = acceptor.step(b"garbage")
 
     assert result.complete is True
     assert result.token == b"server-token"
@@ -187,7 +169,6 @@ def test_every_documented_config_key_is_consumed():
 
     documented = set(settings.to_dict()["AUTH"]["kerberos"])
     consumed = set(KerberosConfig.CONSUMED_CONFIG_KEYS)
-
     assert documented == consumed, (
         f"declared but never read: {sorted(documented - consumed)}; "
         f"read but undocumented: {sorted(consumed - documented)}"
@@ -198,50 +179,33 @@ def test_building_a_config_does_not_touch_the_environment(monkeypatch):
     monkeypatch.delenv("KRB5_KTNAME", raising=False)
 
     KerberosConfig.from_mapping({"keytab": "/tmp/some-service.keytab"})
-
     assert "KRB5_KTNAME" not in os.environ
 
 
-def test_keytab_is_exported_as_krb5_ktname(monkeypatch):
-    """Setting `keytab` must actually reach GSSAPI, which reads the env var."""
-
-    monkeypatch.delenv("KRB5_KTNAME", raising=False)
-
-    KerberosConfig.from_mapping(
-        {"keytab": "/tmp/some-service.keytab"}
-    ).apply_to_environment()
-
-    assert os.environ["KRB5_KTNAME"] == "/tmp/some-service.keytab"
-
-
-def test_krb5_config_is_exported_as_krb5_config(monkeypatch):
-    monkeypatch.delenv("KRB5_CONFIG", raising=False)
-
-    KerberosConfig.from_mapping(
-        {"krb5_config": "/tmp/some-krb5.conf"}
-    ).apply_to_environment()
-
-    assert os.environ["KRB5_CONFIG"] == "/tmp/some-krb5.conf"
-
-
 @pytest.mark.parametrize(
-    "configured",
-    [
-        pytest.param("$HOME/x.keytab", id="dollar"),
-        pytest.param("${HOME}/x.keytab", id="braced"),
-        pytest.param("~/x.keytab", id="tilde"),
-    ],
+    "key,env_var",
+    [("keytab", "KRB5_KTNAME"), ("krb5_config", "KRB5_CONFIG")],
 )
-def test_keytab_path_forms_are_expanded_before_export(monkeypatch, configured):
-    """An unexpanded path would reach the krb5 library as a relative path."""
+def test_setting_is_exported_to_its_env_var(monkeypatch, key, env_var):
+    """Each setting must actually reach GSSAPI, which reads the env var."""
 
+    monkeypatch.delenv(env_var, raising=False)
+
+    KerberosConfig.from_mapping({key: "/tmp/some-file"}).apply_to_environment()
+    assert os.environ[env_var] == "/tmp/some-file"
+
+
+def test_keytab_path_is_expanded_before_export(monkeypatch, tmp_path):
+    """An unexpanded path would reach the krb5 library as a relative path.
+
+    The path forms themselves are covered in `test_utils.py`.
+    """
+
+    monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.delenv("KRB5_KTNAME", raising=False)
 
-    KerberosConfig.from_mapping({"keytab": configured}).apply_to_environment()
-
-    assert os.environ["KRB5_KTNAME"] == os.path.expanduser("~/x.keytab")
-    assert "$" not in os.environ["KRB5_KTNAME"]
-    assert expand_path(configured) == os.environ["KRB5_KTNAME"]
+    KerberosConfig.from_mapping({"keytab": "$HOME/x.keytab"}).apply_to_environment()
+    assert os.environ["KRB5_KTNAME"] == f"{tmp_path}/x.keytab"
 
 
 def test_empty_keytab_does_not_clobber_the_ambient_environment(monkeypatch):
@@ -250,32 +214,21 @@ def test_empty_keytab_does_not_clobber_the_ambient_environment(monkeypatch):
     monkeypatch.setenv("KRB5_KTNAME", "/set/by/the/deployment.keytab")
 
     KerberosConfig.from_mapping({"keytab": ""}).apply_to_environment()
-
     assert os.environ["KRB5_KTNAME"] == "/set/by/the/deployment.keytab"
 
 
 def test_service_name_reaches_the_acceptor_credential():
     acceptor = make_acceptor(service_name="HTTP/tokens.example.gov@EXAMPLE.GOV")
 
-    module = types.ModuleType("gssapi")
-    raw = types.ModuleType("gssapi.raw")
-
-    class NameType:
-        kerberos_principal = "KERBEROS_PRINCIPAL"
-        hostbased_service = "HOSTBASED_SERVICE"
-
-    raw.NameType = NameType
-    module.raw = raw
-    module.Name = mock.MagicMock(return_value="THE-NAME")
-    module.Credentials = mock.MagicMock()
-
-    with mock.patch.dict(sys.modules, {"gssapi": module, "gssapi.raw": raw}):
+    with fake_gssapi() as gssapi:
         acceptor.creds
 
-    module.Name.assert_called_once_with(
-        "HTTP/tokens.example.gov@EXAMPLE.GOV", NameType.kerberos_principal
+    gssapi.Name.assert_called_once_with(
+        "HTTP/tokens.example.gov@EXAMPLE.GOV", gssapi.raw.NameType.kerberos_principal
     )
-    module.Credentials.assert_called_once_with(usage="accept", name="THE-NAME")
+    gssapi.Credentials.assert_called_once_with(
+        usage="accept", name=gssapi.Name.return_value
+    )
 
 
 def test_empty_service_name_accepts_any_spn_in_the_keytab():
@@ -283,12 +236,8 @@ def test_empty_service_name_accepts_any_spn_in_the_keytab():
 
     acceptor = make_acceptor(service_name="")
 
-    module = types.ModuleType("gssapi")
-    module.Credentials = mock.MagicMock()
-    module.Name = mock.MagicMock()
-
-    with mock.patch.dict(sys.modules, {"gssapi": module}):
+    with fake_gssapi() as gssapi:
         acceptor.creds
 
-    module.Name.assert_not_called()
-    module.Credentials.assert_called_once_with(usage="accept", name=None)
+    gssapi.Name.assert_not_called()
+    gssapi.Credentials.assert_called_once_with(usage="accept", name=None)

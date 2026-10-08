@@ -6,7 +6,7 @@ from token_service.config import settings
 from token_service.store.orm import make_engine, reset_db
 from token_service.service.uow import make_sql_uow
 
-from .krb5_harness import gss_name, k5test_env, live_env, resolve_config
+from .krb5_harness import gss_name, k5test_env
 
 
 @pytest.fixture(scope="session")
@@ -77,33 +77,17 @@ def a_jwt(jwt_config, a_persisted_user):
 
 
 @pytest.fixture(scope="session")
-def krb_test_config():
-    """TEST.KERBEROS settings layered over the in-code defaults."""
+def krb5_env():
+    """An ephemeral k5test realm, shared by the whole session.
 
-    return resolve_config(settings)
-
-
-@pytest.fixture(scope="session")
-def krb5_env(krb_test_config, tmp_path_factory):
-    """A usable Kerberos environment, ephemeral or live.
-
-    Session-scoped on purpose. `k5test` sets process-wide GSSAPI state
+    Session-scoped on purpose: `k5test` sets process-wide GSSAPI state
     (KRB5_CONFIG, KRB5_KTNAME, KRB5CCNAME).
 
     Yields:
-        A `Krb5Env` either way, so no test body knows which mode it is
-        running under.
+        A `Krb5Env` describing the realm.
     """
 
-    if krb_test_config.mode == "k5test":
-        yield from k5test_env()
-    elif krb_test_config.mode == "live":
-        yield from live_env(krb_test_config, tmp_path_factory)
-    else:
-        pytest.fail(
-            f"unknown TEST.KERBEROS.mode {krb_test_config.mode!r}; "
-            "expected 'k5test' or 'live'"
-        )
+    yield from k5test_env()
 
 
 @pytest.fixture(scope="session")

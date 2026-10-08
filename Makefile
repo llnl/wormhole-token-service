@@ -3,6 +3,7 @@
 
 .NOTPARALLEL:
 
+export WORMHOLE_TOKEN_SVC_DIR := $(CURDIR)
 HOST ?= localhost
 PORT ?= 5000
 

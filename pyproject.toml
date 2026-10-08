@@ -140,6 +140,8 @@ envlist =
     py{311}
 
 [testenv]
+setenv =
+    WORMHOLE_TOKEN_SVC_DIR = {toxinidir}
 deps =
     pytest==8.3.4
     pytest-asyncio
