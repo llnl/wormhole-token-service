@@ -4,9 +4,7 @@ Reads the kerberos configuration, acquires an acceptor credential,
 drives the GSSAPI handshake and decides which authenticated principal
 is allowed to become which local uid.
 
-`gssapi` is imported lazily throughout, so this module stays importable --
-and `KerberosConfig` stays testable -- without the optional `kerberos`
-extra installed.
+`gssapi` is imported lazily throughout, so this module stays importable.
 """
 
 import logging
