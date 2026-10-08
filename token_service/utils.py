@@ -1,4 +1,5 @@
 import getpass
+import os
 import pendulum
 from functools import lru_cache, wraps
 from secrets import token_urlsafe
@@ -29,7 +30,7 @@ def make_token(nbytes: int = 32) -> str:
 def local_username() -> str:
     """Return the username of the account running this process.
 
-    ``getpass.getuser`` checks LOGNAME, USER, LNAME and USERNAME before
+    `getpass.getuser` checks LOGNAME, USER, LNAME and USERNAME before
     falling back to the password database, so it works on Linux, macOS and
     Windows.
 
@@ -39,3 +40,17 @@ def local_username() -> str:
     """
 
     return getpass.getuser()
+
+
+def expand_path(value) -> str:
+    """Expand `$VAR`, `${VAR}` and `~` in a configured filesystem path.
+
+    Dynaconf expands none of these in a plain TOML value, so an unexpanded
+    `$HOME/...` would reach whatever consumes it as a literal relative path.
+    Dynaconf's own `@format {env[HOME]}` token also works and is resolved
+    before this sees the value.
+    """
+
+    if not value:
+        return ""
+    return os.path.expandvars(os.path.expanduser(str(value)))

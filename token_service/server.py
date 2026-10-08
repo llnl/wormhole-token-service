@@ -92,6 +92,19 @@ def make_app(config: dict) -> FastAPIOffline:
         Endpoint(api_version, make_mfa_router(UOW, jwt_auth, jwt_config, token_config)),
     ]
 
+    # Mounted only when configured
+    krb_config = auth_config.get("kerberos", {})
+    if krb_config.get("enabled") is True:
+        from .dependencies import KerberosAuthenticator
+        from .routers.krb import make_krb_router
+
+        endpoints.append(
+            Endpoint(
+                api_version,
+                make_krb_router(UOW, KerberosAuthenticator(UOW, krb_config)),
+            )
+        )
+
     bind_endpoints(app, endpoints)
 
     # Add middleware if needed

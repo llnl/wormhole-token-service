@@ -2,20 +2,19 @@ from fastapi import APIRouter, Depends, Form, HTTPException, status, Query
 from typing import Annotated
 
 from token_service import adapter
+from .shared import create_token_for_user
 from ..dependencies import BaseUserAuthDependency, TokenAuthenticator, TokenCredentials
 from ..models import User
 from ..pydantic_models import Token as PydanticToken
 from ..pydantic_models import JWTResponse, TokenRotationRequest
 from ..service.uow import BaseUOW
 from ..services import (
-    create_token,
     list_user_tokens,
     remove_token_by_value,
     remove_token_by_name,
     rotate_token,
     make_rotatable,
     ServiceException,
-    AlreadyExists,
     NotFound,
     InvalidToken,
 )
@@ -57,21 +56,7 @@ def make_router(
         user: Annotated[User, Depends(auth)],
         token_data: Annotated[PydanticToken, Form()],
     ) -> str:
-        token = adapter.to_token(token_data)
-        token.user_uid = user.uid
-        scopes = [_ for _ in token_data.scopes or [] if _]
-        try:
-            return create_token(UOW, token, scopes)
-        except AlreadyExists as e:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.msg)
-        except NotFound as e:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.msg)
-        except ServiceException as e:
-            # TODO add logging
-            # log.error(f"failed creating token: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e.msg
-            )
+        return await create_token_for_user(UOW, user, token_data)
 
     @router.put("/rotate", status_code=status.HTTP_200_OK)
     async def rotate(

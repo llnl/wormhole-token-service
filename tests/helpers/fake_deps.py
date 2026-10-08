@@ -1,3 +1,8 @@
+import sys
+import types
+from contextlib import contextmanager
+from unittest import mock
+
 from attrs import define
 from typing import Any, Annotated
 
@@ -60,3 +65,27 @@ class FakeJWTAuthenticator:
 
     def __call__(self) -> User | None:
         return jwt_call_target()
+
+
+@contextmanager
+def fake_gssapi(ctx):
+    """Stand in for the `gssapi` module, so Kerberos logic runs without it.
+
+    Yields:
+        The stub module, installed as `gssapi` in `sys.modules` for the block.
+    """
+
+    module = types.ModuleType("gssapi")
+    exceptions = types.ModuleType("gssapi.exceptions")
+
+    class GSSError(Exception):
+        pass
+
+    exceptions.GSSError = GSSError
+    module.exceptions = exceptions
+    module.SecurityContext = mock.MagicMock(return_value=ctx)
+
+    with mock.patch.dict(
+        sys.modules, {"gssapi": module, "gssapi.exceptions": exceptions}
+    ):
+        yield module

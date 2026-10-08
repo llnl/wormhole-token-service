@@ -1,10 +1,19 @@
 """FastAPI Dependencies."""
 
+import base64
 import requests
 from attrs import define, field
 from functools import wraps
 
-from fastapi import FastAPI, Request, HTTPException, Header, APIRouter, status
+from fastapi import (
+    FastAPI,
+    Request,
+    HTTPException,
+    Header,
+    APIRouter,
+    Response,
+    status,
+)
 from fastapi.responses import RedirectResponse
 from joserfc import jwt
 from joserfc.jwk import KeySet
@@ -15,6 +24,7 @@ from authlib.integrations.starlette_client import StarletteOAuth2App, OAuth
 from starlette.middleware.sessions import SessionMiddleware
 from urllib.parse import unquote
 
+from .auth.kerberos import KerberosAcceptor, KerberosAuthError, KerberosConfig
 from .models import User, AdminRole, JWTConfig
 from .service.uow import BaseUOW
 from .services import (
@@ -243,11 +253,10 @@ class LocalDevAuthenticator(BaseUserAuthDependency):
 
     FOR LOCAL DEVELOPMENT ONLY. This performs no authentication whatsoever --
     it presents no credential requirement and hands back a user record. It
-    exists because the shipped default (``base_auth``) cannot authenticate at
+    exists because the shipped default (`base_auth`) cannot authenticate at
     all, which leaves every user-auth endpoint unreachable on a dev box.
 
-    The user must already exist; seed it with::
-
+    The user must already exist; seed it with:
         wormhole_token_service seed-dev-user
     """
 
@@ -402,4 +411,81 @@ class JWTAuthenticator:
             try:
                 return get_user(uow, token.claims["sub"])
             except NotFound:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+
+@define(slots=False)
+class KerberosAuthenticator(BaseUserAuthDependency):
+    """Turns an RFC 4559 `Negotiate` exchange into a `User`.
+
+    This is deliberately **not** an `AuthenticatorFactory` entry. The factory
+    picks exactly one authenticator for the whole app; Kerberos is an
+    additional auth path mounted alongside it, not a replacement for it.
+    """
+
+    UOW: BaseUOW
+    config: dict
+    acceptor: KerberosAcceptor = field()
+
+    def __hash__(self):
+        return hash(self.__class__.__name__)
+
+    @acceptor.default
+    def _acceptor(self):
+        return KerberosAcceptor(KerberosConfig.from_mapping(self.config))
+
+    def __attrs_post_init__(self):
+        # Export keytab/krb5_config as KRB5_KTNAME/KRB5_CONFIG for the krb5 library.
+        self.acceptor.config.apply_to_environment()
+
+    def _unauthorized_error(self, token: bytes | None = None) -> HTTPException:
+        value = "Negotiate"
+        if token:
+            value = f"Negotiate {base64.b64encode(token).decode()}"
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Kerberos authentication required",
+            headers={"WWW-Authenticate": value},
+        )
+
+    async def __call__(
+        self,
+        response: Response,
+        authorization: Annotated[str | None, Header()] = None,
+    ) -> User:
+        if not authorization:
+            raise self._unauthorized_error()
+
+        scheme, _, payload = authorization.partition(" ")
+        if scheme.lower() != "negotiate" or not payload:
+            raise self._unauthorized_error()
+
+        try:
+            client_token = base64.b64decode(payload, validate=True)
+        except (ValueError, TypeError):
+            raise self._unauthorized_error()
+
+        try:
+            result = self.acceptor.step(client_token)
+        except KerberosAuthError:
+            raise self._unauthorized_error()
+
+        if not result.complete:
+            raise self._unauthorized_error(result.token)
+
+        try:
+            uid = self.acceptor.principal_to_uid(result.principal)
+        except KerberosAuthError:
+            raise self._unauthorized_error()
+
+        if result.token:
+            response.headers["WWW-Authenticate"] = (
+                f"Negotiate {base64.b64encode(result.token).decode()}"
+            )
+
+        with self.UOW() as uow:
+            try:
+                return get_user(uow, uid)
+            except NotFound:
+                logger.warning(f"No seeded User for Kerberos uid {uid!r}")
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
