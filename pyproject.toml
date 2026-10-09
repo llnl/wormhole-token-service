@@ -24,7 +24,7 @@ dependencies = [
     "dynaconf>=3.2.13",
     "fastapi[standard]>=0.136.1",
     "requests>=2.34.2",
-    "sqlalchemy>=2.0.49",
+    "sqlalchemy>=2.0.49,<2.1",
     "tenacity>=9.1.4",
     "multimethod>=2.0.2",
     "pendulum>=3.2.0",
@@ -140,12 +140,15 @@ envlist =
     py{311}
 
 [testenv]
+setenv =
+    WORMHOLE_TOKEN_SVC_DIR = {toxinidir}
 deps =
     pytest==8.3.4
     pytest-asyncio
     requests
     tenacity
     psycopg2-binary
+    sqlalchemy
 commands = pytest -m "not integration"
 
 [testenv:lint]

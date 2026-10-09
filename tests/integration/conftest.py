@@ -6,6 +6,8 @@ from token_service.config import settings
 from token_service.store.orm import make_engine, reset_db
 from token_service.service.uow import make_sql_uow
 
+from .krb5_harness import gss_name, k5test_env
+
 
 @pytest.fixture(scope="session")
 def config():
@@ -72,3 +74,29 @@ def a_jwt(jwt_config, a_persisted_user):
     }
 
     return jwt.encode(header, payload, jwt_config.signing_secret)
+
+
+@pytest.fixture(scope="session")
+def krb5_env():
+    """An ephemeral k5test realm, shared by the whole session.
+
+    Session-scoped on purpose: `k5test` sets process-wide GSSAPI state
+    (KRB5_CONFIG, KRB5_KTNAME, KRB5CCNAME).
+
+    Yields:
+        A `Krb5Env` describing the realm.
+    """
+
+    yield from k5test_env()
+
+
+@pytest.fixture(scope="session")
+def service_name(krb5_env):
+    """The SPN clients target and the server accepts as.
+
+    Under `k5test` this is `host/<hostname>`, which `K5Realm` seeds into
+    the default keytab for free. Under `live` it is whatever
+    `TEST.KERBEROS.service_name` says. The handshake is identical either way.
+    """
+
+    return gss_name(krb5_env.service_name)

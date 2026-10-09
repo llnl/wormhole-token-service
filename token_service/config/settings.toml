@@ -45,6 +45,19 @@ leeway = 300
 [default.AUTH.admin]
 secret_key = "secret"
 
+# Kerberos/SPNEGO auth for POST /api/{version}/krb/token, mounted only when
+# enabled. An extra auth path alongside auth_name, not a factory entry.
+[default.AUTH.kerberos]
+enabled = false
+# Acceptor SPN: "HTTP/host@REALM" or "HTTP@host". Empty accepts any SPN in the keytab.
+service_name = ""
+# Acceptor keytab, exported as KRB5_KTNAME. Empty uses the ambient keytab.
+keytab = ""
+# krb5.conf, exported as KRB5_CONFIG. Empty uses the host's /etc/krb5.conf.
+krb5_config = ""
+# Exactly one realm, e.g. ["EXAMPLE.GOV"]. Empty or more than one refuses to start.
+allowed_realms = []
+
 [default.SERVER]
 host = "localhost"
 port = 5000

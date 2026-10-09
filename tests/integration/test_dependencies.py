@@ -1,9 +1,12 @@
+import base64
 import pytest
 import json
 import time
 import inspect
 import requests
 from unittest import mock
+from fastapi import HTTPException, Response, status
+from tests.helpers.fake_deps import fake_handshake
 from token_service.dependencies import (
     AuthenticatorFactory,
     LocalDevAuthenticator,
@@ -173,3 +176,130 @@ async def test_jwt_authenticator_jwks_cache_expires_after_duration(
         time.sleep(ttl)
         await jwt_auth(a_jwt)
         assert mock_requests.get.call_count == 2
+
+
+def make_kerberos_authenticator(UOW, **config):
+    from token_service.dependencies import KerberosAuthenticator
+
+    defaults = {"enabled": True, "allowed_realms": ["EXAMPLE.GOV"]}
+    return KerberosAuthenticator(UOW, {**defaults, **config})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header",
+    [
+        pytest.param(None, id="absent"),
+        pytest.param("Bearer sometoken", id="wrong_scheme"),
+        pytest.param("Negotiate", id="no_payload"),
+        pytest.param("Negotiate !!!not-base64!!!", id="undecodable"),
+    ],
+)
+async def test_unusable_headers_challenge_without_touching_gssapi(UOW, header):
+    """A malformed header is rejected before any credential is built.
+
+    Asserting `creds` is never reached also proves a missing keytab cannot turn
+    a bad request into a server error.
+    """
+    auth = make_kerberos_authenticator(UOW)
+    response = Response()
+
+    with mock.patch.object(
+        type(auth.acceptor), "creds", new_callable=mock.PropertyMock
+    ) as creds:
+        with pytest.raises(HTTPException) as exc:
+            await auth(response, header)
+
+        creds.assert_not_called()
+
+    assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
+    assert exc.value.headers["WWW-Authenticate"].startswith("Negotiate")
+
+
+@pytest.mark.asyncio
+async def test_gsserror_becomes_a_401_not_a_500(UOW):
+    """A rejected token must not let GSSError escape as a 500."""
+
+    auth = make_kerberos_authenticator(UOW)
+    response = Response()
+    ctx = mock.MagicMock()
+
+    with fake_handshake(ctx) as gssapi:
+        ctx.step.side_effect = gssapi.exceptions.GSSError("rejected")
+        with pytest.raises(HTTPException) as exc:
+            await auth(response, "Negotiate Z2FyYmFnZQ==")
+
+    assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
+    assert exc.value.headers["WWW-Authenticate"].startswith("Negotiate")
+
+
+@pytest.mark.asyncio
+async def test_incomplete_context_returns_the_continuation_token(UOW):
+    """Multi-leg negotiation gets a 401 carrying the next token, not a 403."""
+
+    auth = make_kerberos_authenticator(UOW)
+    response = Response()
+    ctx = mock.MagicMock()
+    ctx.step.return_value = b"continue-me"
+    ctx.complete = False
+
+    with fake_handshake(ctx):
+        with pytest.raises(HTTPException) as exc:
+            await auth(response, "Negotiate Z2FyYmFnZQ==")
+
+    assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
+    expected = base64.b64encode(b"continue-me").decode()
+    assert exc.value.headers["WWW-Authenticate"] == f"Negotiate {expected}"
+
+
+@pytest.mark.asyncio
+async def test_completed_handshake_returns_the_seeded_user(UOW, a_persisted_user):
+    """The happy path maps the principal onto an existing User row."""
+
+    auth = make_kerberos_authenticator(UOW)
+    response = Response()
+    ctx = mock.MagicMock()
+    ctx.step.return_value = b"server-token"
+    ctx.complete = True
+    ctx.initiator_name = f"{a_persisted_user.uid}@EXAMPLE.GOV"
+
+    with fake_handshake(ctx):
+        user = await auth(response, "Negotiate Z2FyYmFnZQ==")
+
+    assert user.uid == a_persisted_user.uid
+    expected = base64.b64encode(b"server-token").decode()
+    assert response.headers["WWW-Authenticate"] == f"Negotiate {expected}"
+
+
+@pytest.mark.asyncio
+async def test_unseeded_principal_is_401_not_auto_provisioned(UOW):
+    """An unknown uid is a 401, matching every other authenticator."""
+
+    auth = make_kerberos_authenticator(UOW)
+    response = Response()
+    ctx = mock.MagicMock()
+    ctx.step.return_value = b""
+    ctx.complete = True
+    ctx.initiator_name = "nobody-here@EXAMPLE.GOV"
+
+    with fake_handshake(ctx):
+        with pytest.raises(HTTPException) as exc:
+            await auth(response, "Negotiate Z2FyYmFnZQ==")
+
+    assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_kerberos_authenticator_is_hashable(UOW):
+    """FastAPI caches dependencies by hash, like the other authenticators."""
+
+    assert hash(make_kerberos_authenticator(UOW)) == hash(
+        make_kerberos_authenticator(UOW)
+    )
+
+
+def test_kerberos_is_not_a_factory_entry():
+    """The factory picks one authenticator; Kerberos is an additional path."""
+
+    from token_service.dependencies import AuthenticatorFactory
+
+    assert "kerberos" not in AuthenticatorFactory().authenticators
