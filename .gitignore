@@ -141,5 +141,8 @@ krb5cc_*
 # Ignore settings.local.toml
 settings.local.toml
 
+# Personal overrides for the test settings
+test_settings.local.toml
+
 # Ignore the openapi.json we create
 openapi.json

@@ -141,7 +141,7 @@ class KerberosAcceptor:
             raise KerberosConfigError(
                 "allowed_realms must name exactly one realm, "
                 f"got {len(realms)}: {list(realms)}. multiple realms "
-                "currently  not supported "
+                "currently not supported."
             )
 
     @property

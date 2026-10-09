@@ -6,7 +6,7 @@ from token_service.config import settings
 from token_service.store.orm import make_engine, reset_db
 from token_service.service.uow import make_sql_uow
 
-from .krb5_harness import gss_name, k5test_env, live_env, resolve_config
+from .krb5_harness import gss_name, k5test_env, live_env, load_test_config
 
 
 @pytest.fixture(scope="session")
@@ -78,9 +78,9 @@ def a_jwt(jwt_config, a_persisted_user):
 
 @pytest.fixture(scope="session")
 def krb_test_config():
-    """TEST.KERBEROS settings layered over the in-code defaults."""
+    """`TEST.KERBEROS` from `tests/config/test_settings.toml` and its overrides."""
 
-    return resolve_config(settings)
+    return load_test_config()
 
 
 @pytest.fixture(scope="session")

@@ -1,7 +1,7 @@
 """Kerberos test harness: k5test and live environments for the Kerberos tests.
 
-Defaults live in `KRB5_TEST_DEFAULTS`, not `settings.toml`, so test-only keys
-don't ship in the wheel.
+`TEST.KERBEROS` comes from `tests/config/test_settings.toml`, not the app's
+settings, so test-only keys don't ship in the wheel.
 """
 
 import base64
@@ -10,11 +10,15 @@ import random
 import shutil
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
+from dynaconf import Dynaconf
 
 from token_service.auth.kerberos import KerberosConfig, as_realm_tuple, gss_name
 from token_service.utils import expand_path
+
+CONFIG_DIR = Path(__file__).resolve().parents[1] / "config"
 
 # k5test drives the MIT krb5 CLI (krb5kdc, kdb5_util, kadmin.local). macOS
 # ships Heimdal, whose binaries are either absent or not interchangeable, so
@@ -25,19 +29,6 @@ MIT_KRB5_PREFIXES = (
     "/usr/local/opt/krb5",  # Homebrew, Intel
     "/usr",  # Linux distro packages
 )
-
-KRB5_TEST_DEFAULTS = {
-    # "k5test" spins up an ephemeral KDC as a child process of pytest (needs
-    # the MIT krb5 tools installed locally, no external realm).
-    # "live" targets a real realm using the values below.
-    "mode": "k5test",
-    "service_name": "",  # e.g. "HTTP/tokens.example.gov@REALM" or "HTTP@tokens.example.gov"
-    "keytab": "",  # acceptor keytab -> KRB5_KTNAME
-    "krb5_config": "",  # -> KRB5_CONFIG; empty uses the system /etc/krb5.conf
-    "client_principal": "",  # e.g. "svc-tokentest@REALM"
-    "client_keytab": "",  # kinit -kt source; empty = use ambient ccache
-    "allowed_realms": (),
-}
 
 # Environment variables the fixtures take over and must hand back untouched.
 KRB5_ENV_KEYS = ("KRB5_CONFIG", "KRB5_KTNAME", "KRB5CCNAME")
@@ -141,21 +132,24 @@ def default_principal_from_ccache(env: dict) -> str | None:
     return None
 
 
-def resolve_config(settings) -> Krb5TestConfig:
-    """TEST.KERBEROS settings layered over the in-code defaults."""
+def load_test_config() -> Krb5TestConfig:
+    """`TEST.KERBEROS` from `tests/config/test_settings.toml` and its overrides."""
 
-    raw = settings.get("TEST", {}).get("KERBEROS", {})
-    # Dynaconf preserves the case it was given; normalise before merging.
-    provided = {str(key).lower(): value for key, value in dict(raw).items()}
-    merged = KRB5_TEST_DEFAULTS | provided
+    settings = Dynaconf(
+        settings_files=["test_settings.toml", "test_settings.local.toml"],
+        root_path=CONFIG_DIR,
+        environments=True,
+        PROJECT_DIR=str(CONFIG_DIR.parents[1]),
+    )
+    kerberos = settings.TEST.KERBEROS
     return Krb5TestConfig(
-        mode=str(merged["mode"]).lower(),
-        service_name=str(merged["service_name"]),
-        keytab=expand_path(merged["keytab"]),
-        krb5_config=expand_path(merged["krb5_config"]),
-        client_principal=str(merged["client_principal"]),
-        client_keytab=expand_path(merged["client_keytab"]),
-        allowed_realms=as_realm_tuple(merged["allowed_realms"]),
+        mode=str(kerberos.mode).lower(),
+        service_name=str(kerberos.service_name),
+        keytab=expand_path(kerberos.keytab),
+        krb5_config=expand_path(kerberos.krb5_config),
+        client_principal=str(kerberos.client_principal),
+        client_keytab=expand_path(kerberos.client_keytab),
+        allowed_realms=as_realm_tuple(kerberos.allowed_realms),
     )
 
 
@@ -347,7 +341,7 @@ __all__ = [
     "k5test_env",
     "live_env",
     "negotiate_header",
-    "resolve_config",
+    "load_test_config",
     "split_spn",
     "unresolved_vars",
 ]

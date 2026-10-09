@@ -49,58 +49,46 @@ klist -k .krb5/service.keytab
 
 ## Configure the tests
 
-Put this in `settings.local.toml` (gitignored). Paths must be **absolute** —
-`$HOME`, `${HOME}` and `~` are expanded by the fixture, but a relative path is
-resolved against the process working directory.
+`tests/config/test_settings.toml` already holds this KDC's values under
+`[default.TEST.KERBEROS]`, with paths relative to the project folder. It
+defaults to `mode = "k5test"`; to use this KDC, switch it to live in
+`tests/config/test_settings.local.toml` (gitignored):
 
 ```toml
 [default.TEST.KERBEROS]
 mode = "live"
-service_name = "HTTP/localhost@WORMHOLE.TEST"
-keytab = "/absolute/path/to/repo/.krb5/service.keytab"
-krb5_config = "/absolute/path/to/repo/.krb5/krb5.conf"
-client_principal = "svc-tokentest@WORMHOLE.TEST"
-client_keytab = "/absolute/path/to/repo/.krb5/client.keytab"
-allowed_realms = ["WORMHOLE.TEST"]
 ```
 
-Or without touching the file:
+Or for one run, without touching the file: `DYNACONF_TEST__KERBEROS__mode=live`
+(`make test-krb5` does this). To test against a different realm, override the
+other keys the same way; paths must be absolute.
+
+Check the settings against the files and KDC they name:
 
 ```shell
-export DYNACONF_TEST__KERBEROS__mode=live
-export DYNACONF_TEST__KERBEROS__service_name="HTTP/localhost@WORMHOLE.TEST"
-export DYNACONF_TEST__KERBEROS__keytab="$PWD/.krb5/service.keytab"
-export DYNACONF_TEST__KERBEROS__krb5_config="$PWD/.krb5/krb5.conf"
-export DYNACONF_TEST__KERBEROS__client_principal="svc-tokentest@WORMHOLE.TEST"
-export DYNACONF_TEST__KERBEROS__client_keytab="$PWD/.krb5/client.keytab"
-export DYNACONF_TEST__KERBEROS__allowed_realms="WORMHOLE.TEST"
+make check-krb5-config
 ```
 
-Confirm what the fixtures resolved before running anything:
+Each check prints PASS, FAIL, WARN or SKIP with what was resolved (value
+formats, files and permissions, each keytab holding its principal, the KDC
+answering, `kinit` getting a ticket into a temporary cache), and the command
+exits non-zero on any failure.
+
+Or just print what the fixtures resolved:
 
 ```shell
-uv run python -c 'from token_service.config import settings; from tests.integration.krb5_harness import resolve_config; c = resolve_config(settings); [print(f"{f:18}= {getattr(c,f)!r}") for f in c.__dataclass_fields__]'
+uv run python -c 'from tests.integration.krb5_harness import load_test_config; c = load_test_config(); [print(f"{f:18}= {getattr(c,f)!r}") for f in c.__dataclass_fields__]'
 ```
 
-## Run the validation suite
+## Run the tests against it
 
 ```shell
-uv run pytest tests/integration/test_kerberos_live_config.py -m integration -v
+make test-krb5
 ```
 
-22 checks, in two groups:
-
-- **Value format** — SPN is a recognised form, realm is uppercase, paths are
-  absolute and fully expanded, `client_keytab` and `client_principal` are set
-  together, `allowed_realms` entries are bare realm names.
-- **Configured resources are usable** — files exist, are readable and are not
-  writable by others; the acceptor keytab actually holds the configured SPN;
-  `krb5.conf` declares the realm and at least one KDC; the KDC answers on TCP;
-  `kinit` obtains a ticket with the client keytab; an acceptor credential can be
-  acquired; a full handshake completes.
-
-With `mode = "k5test"` (the default) the whole module skips — those settings are
-what it validates, and k5test ignores them.
+Runs the endpoint and handshake tests (`test_kerberos.py`,
+`test_gssapi_handshake.py`) in live mode against this KDC. With `mode = "live"`
+set locally, a plain `uv run pytest tests -m integration` does the same.
 
 ## Configure the runtime too
 
@@ -110,10 +98,13 @@ To exercise the service itself against this realm:
 [default.AUTH.kerberos]
 enabled = true
 service_name = "HTTP/localhost@WORMHOLE.TEST"
-keytab = "@format {env[PWD]}/.krb5/service.keytab"
-krb5_config = "@format {env[PWD]}/.krb5/krb5.conf"
+keytab = "@format {env[WORMHOLE_TOKEN_SVC_DIR]}/.krb5/service.keytab"
+krb5_config = "@format {env[WORMHOLE_TOKEN_SVC_DIR]}/.krb5/krb5.conf"
 allowed_realms = ["WORMHOLE.TEST"]
 ```
+
+`make` and tox set `WORMHOLE_TOKEN_SVC_DIR` to the project folder; for other
+runs, set it yourself.
 
 Then seed a user matching the principal you will authenticate as, and drive the
 endpoint with a real ticket:
@@ -121,6 +112,7 @@ endpoint with a real ticket:
 ```shell
 uv run wormhole_token_service seed-dev-user --uid svc-tokentest
 make run-dev
+export KRB5_CONFIG=$PWD/.krb5/krb5.conf   # for kinit and curl alike
 kinit -kt .krb5/client.keytab svc-tokentest@WORMHOLE.TEST
 curl --negotiate -u : -d name=mytoken http://localhost:5000/api/v1/krb/token
 ```
