@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # Hubcast doesn't mirror pushes made by dependabot[bot], so each Dependabot PR
+  # needs a maintainer's "approve" review before CI runs on GitLab. Grouping
+  # updates and disabling auto-rebase keeps the number of approvals down; comment
+  # "@dependabot rebase" to rebase manually (then approve again).
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 100
+    rebase-strategy: "disabled"
+    groups:
+      uv:
+        update-types:
+          - "patch"
+
+  # Actions are pinned by SHA with a trailing "# vX.Y.Z" comment, which
+  # Dependabot keeps in sync when it bumps the SHA.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 100
+    rebase-strategy: "disabled"
+    groups:
+      github-actions:
+        update-types:
+          - "minor"
+          - "patch"
