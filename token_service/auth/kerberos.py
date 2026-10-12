@@ -39,9 +39,9 @@ class KerberosConfigError(ValueError):
 def gss_name(service_name: str):
     """Build a `gssapi.Name`, choosing the name type from the spelling.
 
-    - `HTTP/tokens.example.gov@REALM` -- a Kerberos principal. The `@`
+    - `HTTP/tokens.example.gov@REALM` - a Kerberos principal. The `@`
       separates the realm.
-    - `HTTP@tokens.example.gov` -- a host-based service. The `@` separates
+    - `HTTP@tokens.example.gov` - a host-based service. The `@` separates
       the hostname.
 
     The discriminator is whether the part before the first `@` contains a
@@ -109,7 +109,7 @@ class AcceptResult:
 
     Attributes:
         principal: The initiator's principal, e.g. `alice@EXAMPLE.GOV`. Set
-            only when `complete` -- an unfinished context has not proven a
+            only when `complete`. An unfinished context has not proven a
             name yet.
     """
 

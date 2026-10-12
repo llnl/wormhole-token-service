@@ -251,8 +251,8 @@ class AuthLibOIDCAuthenticator(BaseUserAuthDependency):
 class LocalDevAuthenticator(BaseUserAuthDependency):
     """Authenticates every request as the local machine user.
 
-    FOR LOCAL DEVELOPMENT ONLY. This performs no authentication whatsoever --
-    it presents no credential requirement and hands back a user record. It
+    FOR LOCAL DEVELOPMENT ONLY. This performs no authentication whatsoever.
+    It presents no credential requirement and hands back a user record. It
     exists because the shipped default (`base_auth`) cannot authenticate at
     all, which leaves every user-auth endpoint unreachable on a dev box.
 
