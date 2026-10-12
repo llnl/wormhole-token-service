@@ -2,21 +2,17 @@ import pytest
 
 from joserfc import jwt
 from token_service import models
+from token_service.auth.kerberos import gss_name
 from token_service.config import settings
 from token_service.store.orm import make_engine, reset_db
 from token_service.service.uow import make_sql_uow
 
-from .krb5_harness import gss_name, k5test_env, live_env, load_test_config
-
-
-@pytest.fixture(scope="session")
-def config():
-    return settings.to_dict()
+from .krb5_harness import k5test_env, live_env, load_test_config
 
 
 @pytest.fixture
 def jwt_config():
-    # alg/active_kid from test_settings.toml; PEMs set by tests/conftest.py.
+    # alg/active_kid from test_settings.toml. PEMs set by tests/conftest.py.
     return models.JWTConfig(settings.to_dict()["AUTH"]["jwt"])
 
 
@@ -77,8 +73,7 @@ def krb5_env(krb_test_config, tmp_path_factory):
     (KRB5_CONFIG, KRB5_KTNAME, KRB5CCNAME).
 
     Yields:
-        A `Krb5Env` either way, so no test body knows which mode it is
-        running under.
+        A `Krb5Env` describing the realm.
     """
 
     if krb_test_config.mode == "k5test":

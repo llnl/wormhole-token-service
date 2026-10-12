@@ -9,7 +9,7 @@ PROJECT_DIR = CONFIG_DIR.parents[1]
 # Used by settings.local.toml. `make` and tox export it too.
 os.environ.setdefault("WORMHOLE_TOKEN_SVC_DIR", str(PROJECT_DIR))
 
-# Runs once, on import. calling `settings.configure` again drops the test signing key.
+# Run only once via import. Calling `settings.configure` again drops the test signing key.
 settings.configure(
     FORCE_ENV_FOR_DYNACONF="testing",
     INCLUDES_FOR_DYNACONF=[

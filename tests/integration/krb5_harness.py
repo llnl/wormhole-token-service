@@ -1,8 +1,16 @@
 """Kerberos test harness: k5test and live environments for the Kerberos tests.
 
-`TEST.KERBEROS` comes from `tests/config/test_settings.toml`, not the app's
-settings, so test-only keys don't ship in the wheel.
+`TEST.KERBEROS` comes from `tests/config/test_settings.toml`.
 """
+
+__all__ = [
+    "Krb5Env",
+    "initiate",
+    "k5test_env",
+    "live_env",
+    "load_test_config",
+    "negotiate_header",
+]
 
 import base64
 import os
@@ -13,7 +21,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from token_service.auth.kerberos import KerberosConfig, as_realm_tuple, gss_name
+from token_service.auth.kerberos import KerberosConfig, as_realm_tuple
 from token_service.utils import expand_path
 from token_service.config import settings
 
@@ -43,24 +51,11 @@ class Krb5TestConfig:
     client_keytab: str
     allowed_realms: tuple[str, ...]
 
-    @property
-    def uses_ambient_ccache(self) -> bool:
-        """True when `client_keytab` is empty: use the developer's own ticket.
-
-        `KRB5CCNAME` is then left alone rather than redirected at a temp file.
-        """
-
-        return not self.client_keytab
-
 
 @dataclass(frozen=True)
 class Krb5Env:
-    """The small interface both modes yield, so test bodies do not branch."""
-
-    mode: str
     realm: str
     user_princ: str
-    hostname: str
     service_name: str
 
     @property
@@ -89,44 +84,10 @@ def mit_krb5_bin_dirs() -> list[str] | None:
     return None
 
 
-def split_spn(spn: str) -> tuple[str, bool]:
-    """Return `(hostname, is_principal_form)` for a service name.
-
-    `HTTP/tokens.example.gov@REALM` puts the host after the `/`;
-    `HTTP@tokens.example.gov` puts it after the `@`. Only the principal
-    form has a `/` before the first `@`.
-    """
-
-    local = spn.split("@", 1)[0]
-    if "/" in local:
-        return local.split("/", 1)[1], True
-    _, _, host = spn.partition("@")
-    return host, False
-
-
 def unresolved_vars(path: str) -> bool:
     """True if a path still holds an unexpanded `$VAR` after expansion."""
 
     return "$" in path
-
-
-def default_principal_from_ccache(env: dict) -> str | None:
-    """Read the default principal out of the ambient credential cache."""
-
-    klist = shutil.which("klist")
-    if klist is None:
-        return None
-    result = subprocess.run([klist], capture_output=True, text=True, env=env)
-    if result.returncode != 0:
-        return None
-    for line in result.stdout.splitlines():
-        # MIT: "Default principal: alice@REALM"
-        # Heimdal: "Principal: alice@REALM"
-        if "rincipal:" in line:
-            candidate = line.split(":", 1)[1].strip()
-            if "@" in candidate:
-                return candidate
-    return None
 
 
 def load_test_config() -> Krb5TestConfig:
@@ -174,10 +135,8 @@ def k5test_env():
     # K5Realm provisions host/<hostname> into the default keytab during setup,
     # so it is usable as an acceptor credential with no extra work.
     yield Krb5Env(
-        mode="k5test",
         realm=realm.realm,
         user_princ=realm.user_princ,
-        hostname=realm.hostname,
         service_name=f"host/{realm.hostname}",
     )
 
@@ -225,10 +184,10 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
             )
         if not os.access(path, os.R_OK):
             pytest.skip(f"{label} is not readable: {path}")
-    if cfg.client_keytab and not cfg.client_principal:
+    if not (cfg.client_keytab and cfg.client_principal):
         pytest.skip(
-            "TEST.KERBEROS.client_keytab is set but client_principal is not; "
-            "kinit -kt needs a principal to request"
+            "live mode needs TEST.KERBEROS.client_keytab and client_principal "
+            "(the test client runs `kinit -kt`)"
         )
 
     # Prefer MIT's kinit/klist when present so the CLI and the KDC agree, but
@@ -248,45 +207,29 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
             keytab=cfg.keytab, krb5_config=cfg.krb5_config
         ).apply_to_environment()
 
-        if cfg.uses_ambient_ccache:
-            # Deliberately using the developer's own ticket. Leave KRB5CCNAME
-            # exactly as it is. Redirecting it here would hide the very
-            # credential we were asked to test with.
-            user_princ = default_principal_from_ccache(os.environ)
-            if user_princ is None:
-                pytest.skip(
-                    "live mode with no TEST.KERBEROS.client_keytab uses your "
-                    "ambient credential cache, but no valid ticket was found. "
-                    "Run `kinit` first, or set client_keytab/client_principal "
-                    "for an unattended run."
-                )
-        else:
-            kinit = shutil.which("kinit")
-            if kinit is None:
-                pytest.skip("live mode needs `kinit` on PATH to use a client keytab")
-            # Never kinit into the ambient cache: that silently overwrites
-            # whatever ticket the developer was using.
-            ccache_path = tmp_path_factory.mktemp("krb5cc") / "ccache"
-            os.environ["KRB5CCNAME"] = f"FILE:{ccache_path}"
-            result = subprocess.run(
-                [kinit, "-kt", cfg.client_keytab, cfg.client_principal],
-                capture_output=True,
-                text=True,
-                env=os.environ,
+        kinit = shutil.which("kinit")
+        if kinit is None:
+            pytest.skip("live mode needs `kinit` on PATH to use a client keytab")
+        # Never kinit into the developer's own cache: that silently overwrites
+        # whatever ticket they were using.
+        ccache_path = tmp_path_factory.mktemp("krb5cc") / "ccache"
+        os.environ["KRB5CCNAME"] = f"FILE:{ccache_path}"
+        result = subprocess.run(
+            [kinit, "-kt", cfg.client_keytab, cfg.client_principal],
+            capture_output=True,
+            text=True,
+            env=os.environ,
+        )
+        if result.returncode != 0:
+            pytest.skip(
+                f"kinit -kt {cfg.client_keytab} {cfg.client_principal} failed: "
+                f"{(result.stderr or result.stdout).strip()}"
             )
-            if result.returncode != 0:
-                pytest.skip(
-                    f"kinit -kt {cfg.client_keytab} {cfg.client_principal} failed: "
-                    f"{(result.stderr or result.stdout).strip()}"
-                )
-            user_princ = cfg.client_principal
+        user_princ = cfg.client_principal
 
-        hostname, _ = split_spn(cfg.service_name)
         yield Krb5Env(
-            mode="live",
             realm=user_princ.rsplit("@", 1)[-1],
             user_princ=user_princ,
-            hostname=hostname,
             service_name=cfg.service_name,
         )
     finally:
@@ -320,17 +263,3 @@ def initiate(service_name) -> tuple[object, bytes]:
 
 def negotiate_header(token: bytes) -> str:
     return f"Negotiate {base64.b64encode(token).decode()}"
-
-
-__all__ = [
-    "Krb5Env",
-    "Krb5TestConfig",
-    "gss_name",
-    "initiate",
-    "k5test_env",
-    "live_env",
-    "negotiate_header",
-    "load_test_config",
-    "split_spn",
-    "unresolved_vars",
-]

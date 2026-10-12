@@ -5,7 +5,6 @@ from tenacity import retry, wait_fixed
 from threading import Thread
 from unittest import mock
 
-from token_service.config import settings
 from token_service.store.orm import make_engine, reset_db
 from token_service.server import make_server
 from token_service.service.uow import make_sql_uow
@@ -16,11 +15,6 @@ from tests.helpers.fake_deps import FakeOIDCAuthenticator, FakeJWTAuthenticator
 @pytest.fixture(scope="session")
 def claims_registry():
     return jwt.JWTClaimsRegistry(leeway=1)
-
-
-@pytest.fixture(scope="session")
-def config():
-    return settings.to_dict()
 
 
 @pytest.fixture(scope="module")

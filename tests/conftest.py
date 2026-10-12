@@ -180,3 +180,8 @@ def public_key(private_key):
 def add_keys_to_settings(kid, private_pem, public_pem):
     settings.set(f"AUTH.jwt.keys.{kid}.private_pem", private_pem.decode())
     settings.set(f"AUTH.jwt.keys.{kid}.public_pem", public_pem.decode())
+
+
+@pytest.fixture(scope="session")
+def config():
+    return settings.to_dict()
