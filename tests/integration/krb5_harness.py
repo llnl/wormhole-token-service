@@ -160,12 +160,9 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
         if not path:
             continue
         if unresolved_vars(path):
-            # Reported separately from "not readable": the cause is an unset
-            # environment variable, not a missing file, and the two need
-            # different fixes.
             pytest.skip(
                 f"{label} still contains an unexpanded variable after "
-                f"expansion -- is it set in this environment? {path}"
+                f"expansion. Is it set in this environment? {path}"
             )
         if not os.access(path, os.R_OK):
             pytest.skip(f"{label} is not readable: {path}")
@@ -190,6 +187,7 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
         kinit = shutil.which("kinit")
         if kinit is None:
             pytest.skip("live mode needs `kinit` on PATH to use a client keytab")
+
         # Never kinit into the developer's own cache: that silently overwrites
         # whatever ticket they were using.
         ccache_path = tmp_path_factory.mktemp("krb5cc") / "ccache"
