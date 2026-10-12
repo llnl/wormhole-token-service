@@ -18,6 +18,7 @@ import random
 import shutil
 import subprocess
 from dataclasses import dataclass
+from unittest import mock
 
 import pytest
 
@@ -35,19 +36,16 @@ MIT_KRB5_PREFIXES = (
     "/usr",  # Linux distro packages
 )
 
-# Environment variables the fixtures take over and must hand back untouched.
-KRB5_ENV_KEYS = ("KRB5_CONFIG", "KRB5_KTNAME", "KRB5CCNAME")
-
 
 @dataclass(frozen=True)
 class Krb5TestConfig:
     """Resolved TEST.KERBEROS settings."""
 
     mode: str
-    service_name: str
+    service_name: str | None
     keytab: str
     krb5_config: str
-    client_principal: str
+    client_principal: str | None
     client_keytab: str
     allowed_realms: tuple[str, ...]
 
@@ -74,8 +72,7 @@ def mit_krb5_bin_dirs() -> list[str] | None:
         krb5_config = shutil.which("krb5-config", path=bin_dir)
         if not (krb5kdc and krb5_config):
             continue
-        # Heimdal ships a krb5-config too, so presence is not enough.
-        # confirm the vendor before trusting this prefix.
+        # Heimdal ships a krb5-config too, so check the vendor before trusting it.
         version = subprocess.run(
             [krb5_config, "--version"], capture_output=True, text=True
         ).stdout
@@ -94,10 +91,10 @@ def load_test_config() -> Krb5TestConfig:
     kerberos = settings.TEST.KERBEROS
     return Krb5TestConfig(
         mode=str(kerberos.mode).lower(),
-        service_name=str(kerberos.service_name),
+        service_name=kerberos.service_name or None,
         keytab=expand_path(kerberos.keytab),
         krb5_config=expand_path(kerberos.krb5_config),
-        client_principal=str(kerberos.client_principal),
+        client_principal=kerberos.client_principal or None,
         client_keytab=expand_path(kerberos.client_keytab),
         allowed_realms=as_realm_tuple(kerberos.allowed_realms),
     )
@@ -114,38 +111,26 @@ def k5test_env():
 
     bin_dirs = mit_krb5_bin_dirs()
     if bin_dirs is None:
-        pytest.skip(
-            "MIT krb5 not found. macOS ships Heimdal, which k5test cannot "
-            "drive -- install MIT krb5 with `brew install krb5`."
-        )
-
-    original_path = os.environ["PATH"]
-    os.environ["PATH"] = os.pathsep.join([*bin_dirs, original_path])
+        pytest.skip("MIT krb5 not found. Install MIT krb5.")
 
     from k5test.realm import K5Realm
 
-    realm = K5Realm(
-        krb5_conf={"libdefaults": {"rdns": "false"}},
-        # Randomised so parallel runs do not fight over KDC ports.
-        portbase=random.randint(2000, 6000) * 10,
-    )
-    original_env = {k: os.environ.get(k) for k in realm.env}
-    os.environ.update(realm.env)
+    with mock.patch.dict(os.environ):
+        os.environ["PATH"] = os.pathsep.join([*bin_dirs, os.environ["PATH"]])
+        realm = K5Realm(
+            krb5_conf={"libdefaults": {"rdns": "false"}},
+            # Randomised so parallel runs do not fight over KDC ports.
+            portbase=random.randint(2000, 6000) * 10,
+        )
+        os.environ.update(realm.env)
 
-    # K5Realm provisions host/<hostname> into the default keytab during setup,
-    # so it is usable as an acceptor credential with no extra work.
-    yield Krb5Env(
-        realm=realm.realm,
-        user_princ=realm.user_princ,
-        service_name=f"host/{realm.hostname}",
-    )
-
-    for key, value in original_env.items():
-        if value is None:
-            del os.environ[key]
-        else:
-            os.environ[key] = value
-    os.environ["PATH"] = original_path
+        # K5Realm provisions host/<hostname> into the default keytab during
+        # setup, so it is usable as an acceptor credential with no extra work.
+        yield Krb5Env(
+            realm=realm.realm,
+            user_princ=realm.user_princ,
+            service_name=f"host/{realm.hostname}",
+        )
     realm.stop()
 
 
@@ -190,19 +175,14 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
             "(the test client runs `kinit -kt`)"
         )
 
-    # Prefer MIT's kinit/klist when present so the CLI and the KDC agree, but
-    # do not require them: unlike k5test, live mode needs no krb5kdc/kdb5_util.
-    original_path = os.environ["PATH"]
-    bin_dirs = mit_krb5_bin_dirs()
-    if bin_dirs:
-        os.environ["PATH"] = os.pathsep.join([*bin_dirs, original_path])
+    # Restores os.environ on exit, including apply_to_environment's direct writes.
+    with mock.patch.dict(os.environ):
+        # Prefer MIT's kinit when present so the CLI and the KDC agree; unlike
+        # k5test, live mode doesn't require it.
+        bin_dirs = mit_krb5_bin_dirs()
+        if bin_dirs:
+            os.environ["PATH"] = os.pathsep.join([*bin_dirs, os.environ["PATH"]])
 
-    original_env = {key: os.environ.get(key) for key in KRB5_ENV_KEYS}
-    ccache_path = None
-
-    try:
-        # The same export the service performs, so the harness cannot drift
-        # from it.
         KerberosConfig(
             keytab=cfg.keytab, krb5_config=cfg.krb5_config
         ).apply_to_environment()
@@ -214,42 +194,26 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
         # whatever ticket they were using.
         ccache_path = tmp_path_factory.mktemp("krb5cc") / "ccache"
         os.environ["KRB5CCNAME"] = f"FILE:{ccache_path}"
-        result = subprocess.run(
-            [kinit, "-kt", cfg.client_keytab, cfg.client_principal],
-            capture_output=True,
-            text=True,
-            env=os.environ,
-        )
-        if result.returncode != 0:
-            pytest.skip(
-                f"kinit -kt {cfg.client_keytab} {cfg.client_principal} failed: "
-                f"{(result.stderr or result.stdout).strip()}"
+        try:
+            result = subprocess.run(
+                [kinit, "-kt", cfg.client_keytab, cfg.client_principal],
+                capture_output=True,
+                text=True,
+                env=os.environ,
             )
-        user_princ = cfg.client_principal
-
-        yield Krb5Env(
-            realm=user_princ.rsplit("@", 1)[-1],
-            user_princ=user_princ,
-            service_name=cfg.service_name,
-        )
-    finally:
-        if ccache_path is not None:
-            kdestroy = shutil.which("kdestroy")
-            if kdestroy is not None:
-                subprocess.run(
-                    [kdestroy, "-c", f"FILE:{ccache_path}"],
-                    capture_output=True,
-                    env=os.environ,
+            if result.returncode != 0:
+                pytest.skip(
+                    f"kinit -kt {cfg.client_keytab} {cfg.client_principal} "
+                    f"failed: {(result.stderr or result.stdout).strip()}"
                 )
-            # kdestroy may be absent or may leave the file behind.
-            if os.path.exists(ccache_path):
-                os.unlink(ccache_path)
-        for key, value in original_env.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
-        os.environ["PATH"] = original_path
+            yield Krb5Env(
+                realm=cfg.client_principal.rsplit("@", 1)[-1],
+                user_princ=cfg.client_principal,
+                service_name=cfg.service_name,
+            )
+        finally:
+            # The cache is the file, so removing it destroys the tickets.
+            ccache_path.unlink(missing_ok=True)
 
 
 def initiate(service_name) -> tuple[object, bytes]:
@@ -258,7 +222,10 @@ def initiate(service_name) -> tuple[object, bytes]:
     import gssapi
 
     ctx = gssapi.SecurityContext(name=service_name, usage="initiate")
-    return ctx, ctx.step()
+    token = ctx.step()
+    assert token is not None, "the first initiator step always yields a token"
+
+    return ctx, token
 
 
 def negotiate_header(token: bytes) -> str:

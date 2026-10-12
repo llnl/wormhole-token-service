@@ -1,4 +1,4 @@
-.PHONY: sync-dev sync-prod lock lock-check build refresh test run-dev \
+.PHONY: sync-dev sync-prod lock lock-check build refresh test test-all run-dev \
         run-prod pre-commit jwks migrate openapi seed run-local-docker-krb test-live-krb
 
 .NOTPARALLEL:
@@ -27,6 +27,10 @@ refresh: lock lock-check build
 
 test: sync-dev
 	uvx tox -e py311
+
+# TODO: use tox in the future. Its env lacks gssapi/k5test for the integration tests.
+test-all: sync-dev
+	uv run pytest tests
 
 run-dev: sync-dev seed
 	uv run wormhole_token_service run --host $(HOST) --port $(PORT)
