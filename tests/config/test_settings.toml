@@ -1,0 +1,25 @@
+dynaconf_merge = true
+
+[testing]
+log_level = "DEBUG"
+
+[testing.SERVER]
+loop = "asyncio"
+
+[testing.TEST.KERBEROS]
+# "k5test": an ephemeral realm per test session; the values below are ignored.
+# "live": the realm below, which is the local Docker KDC (docker-compose.krb5.yml).
+mode = "k5test"
+service_name = "HTTP/localhost@WORMHOLE.TEST"                       # or "HTTP@host"
+keytab = "@format {this.PROJECT_DIR}/.krb5/service.keytab"          # -> KRB5_KTNAME
+krb5_config = "@format {this.PROJECT_DIR}/.krb5/krb5.conf"          # -> KRB5_CONFIG
+client_principal = "svc-tokentest@WORMHOLE.TEST"
+client_keytab = "@format {this.PROJECT_DIR}/.krb5/client.keytab"    # empty: use your own ticket
+allowed_realms = ["WORMHOLE.TEST"]
+
+[testing.AUTH.jwt]
+alg = "RS256"
+active_kid = "my-key-id"
+
+[testing.AUTH.jwt.keys.my-key-id]
+key_type = "RSA"

@@ -11,27 +11,13 @@ from .krb5_harness import gss_name, k5test_env, live_env, load_test_config
 
 @pytest.fixture(scope="session")
 def config():
-    settings.SERVER.loop = "asyncio"
-    settings.log_level = "debug"
     return settings.to_dict()
 
 
 @pytest.fixture
-def jwt_config(kid, public_pem, private_pem):
-    key = {
-        "public_pem": public_pem,
-        "private_pem": private_pem,
-        "key_type": "RSA",
-    }
-
-    settings.AUTH.JWT.alg = "RS256"
-    settings.AUTH.JWT.active_kid = kid
-
-    all_config = settings.to_dict()
-    config = all_config["AUTH"]["jwt"]
-    config["keys"][kid] = key
-
-    return models.JWTConfig(config)
+def jwt_config():
+    # alg/active_kid from test_settings.toml; PEMs set by tests/conftest.py.
+    return models.JWTConfig(settings.to_dict()["AUTH"]["jwt"])
 
 
 @pytest.fixture(scope="module")

@@ -49,41 +49,25 @@ klist -k .krb5/service.keytab
 
 ## Configure the tests
 
-`tests/config/test_settings.toml` already holds this KDC's values under
-`[default.TEST.KERBEROS]`, with paths relative to the project folder. It
-defaults to `mode = "k5test"`; to use this KDC, switch it to live in
+`tests/config/test_settings.toml` defaults to `mode = "k5test"`.
+to use local/docker KDC, switch it to live in
 `tests/config/test_settings.local.toml` (gitignored):
 
 ```toml
-[default.TEST.KERBEROS]
+dynaconf_merge = true
+
+[testing.TEST.KERBEROS]
 mode = "live"
 ```
 
 Or for one run, without touching the file: `DYNACONF_TEST__KERBEROS__mode=live`
-(`make test-krb5` does this). To test against a different realm, override the
-other keys the same way; paths must be absolute.
-
-Check the settings against the files and KDC they name:
-
-```shell
-make check-krb5-config
-```
-
-Each check prints PASS, FAIL, WARN or SKIP with what was resolved (value
-formats, files and permissions, each keytab holding its principal, the KDC
-answering, `kinit` getting a ticket into a temporary cache), and the command
-exits non-zero on any failure.
-
-Or just print what the fixtures resolved:
-
-```shell
-uv run python -c 'from tests.integration.krb5_harness import load_test_config; c = load_test_config(); [print(f"{f:18}= {getattr(c,f)!r}") for f in c.__dataclass_fields__]'
-```
+(`make test-live-krb` does this). To test against a different realm, override the
+other keys the same way.
 
 ## Run the tests against it
 
 ```shell
-make test-krb5
+make test-live-krb
 ```
 
 Runs the endpoint and handshake tests (`test_kerberos.py`,

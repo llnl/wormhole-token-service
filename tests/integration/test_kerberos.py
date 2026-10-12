@@ -17,41 +17,11 @@ from .krb5_harness import initiate, negotiate_header
 pytestmark = pytest.mark.integration
 
 
-# TODO: fix test ordering error
 @pytest.fixture(scope="module")
-def krb_base_config(config, kid, public_pem, private_pem):
-    """App config with a coherent JWT block, independent of run order.
-
-    `make_app` builds a `JWTConfig`, which resolves `active_kid` against
-    `keys`. `tests/e2e/conftest.py` mutates the shared `settings`
-    singleton's `active_kid` but injects the matching key only into its own
-    dict copy, so a config derived from `settings` after e2e has run names a
-    kid that is not in `keys` and raises `KeyError`. Pinning a matched pair
-    here keeps this module independent of whether e2e ran first.
-    """
-
-    cfg = {**config}
-    cfg["AUTH"] = {**cfg["AUTH"]}
-    jwt_cfg = {**cfg["AUTH"]["jwt"]}
-    jwt_cfg["alg"] = "RS256"
-    jwt_cfg["active_kid"] = kid
-    jwt_cfg["keys"] = {
-        **jwt_cfg.get("keys", {}),
-        kid: {
-            "public_pem": public_pem,
-            "private_pem": private_pem,
-            "key_type": "RSA",
-        },
-    }
-    cfg["AUTH"]["jwt"] = jwt_cfg
-    return cfg
-
-
-@pytest.fixture(scope="module")
-def krb_config(krb_base_config, krb5_env):
+def krb_config(config, krb5_env):
     """App config with Kerberos enabled and pointed at the test realm."""
 
-    cfg = {**krb_base_config}
+    cfg = {**config}
     cfg["AUTH"] = {**cfg["AUTH"]}
     cfg["AUTH"]["kerberos"] = {
         "enabled": True,
@@ -104,12 +74,10 @@ def test_endpoint_is_mounted_under_the_versioned_prefix(krb_app, config):
     "realms",
     [pytest.param([], id="empty"), pytest.param(["A.GOV", "B.GOV"], id="two")],
 )
-def test_app_refuses_to_start_unless_exactly_one_realm_is_allowed(
-    krb_base_config, realms
-):
+def test_app_refuses_to_start_unless_exactly_one_realm_is_allowed(config, realms):
     """Enabling Kerberos without exactly one realm stops `make_app`."""
 
-    cfg = {**krb_base_config}
+    cfg = {**config}
     cfg["AUTH"] = {
         **cfg["AUTH"],
         "kerberos": {"enabled": True, "allowed_realms": realms},
@@ -119,10 +87,10 @@ def test_app_refuses_to_start_unless_exactly_one_realm_is_allowed(
         make_app(cfg)
 
 
-def test_endpoint_is_absent_when_disabled(krb_base_config):
+def test_endpoint_is_absent_when_disabled(config):
     """`gssapi` stays optional and the spec is unchanged without Kerberos."""
 
-    cfg = {**krb_base_config}
+    cfg = {**config}
     cfg["AUTH"] = {**cfg["AUTH"], "kerberos": {"enabled": False}}
 
     paths = {route.path for route in make_app(cfg).routes}

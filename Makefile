@@ -1,10 +1,9 @@
 .PHONY: sync-dev sync-prod lock lock-check build refresh test run-dev \
-        run-prod pre-commit jwks migrate openapi seed run-local-docker-krb test-live-krb \
-        check-krb-config
+        run-prod pre-commit jwks migrate openapi seed run-local-docker-krb test-live-krb
 
 .NOTPARALLEL:
 
-export WORMHOLE_TOKEN_SVC_DIR := $(CURDIR)
+export WORMHOLE_TOKEN_SVC_DIR ?= $(CURDIR)
 HOST ?= localhost
 PORT ?= 5000
 
@@ -58,6 +57,3 @@ seed: sync-dev
 test-live-krb: run-local-docker-krb
 	DYNACONF_TEST__KERBEROS__mode=live uv run pytest tests/integration/test_kerberos.py \
 		tests/integration/test_gssapi_handshake.py -m integration -v
-
-check-krb-config:
-	uv run python -m tests.tools.check_kerberos_config

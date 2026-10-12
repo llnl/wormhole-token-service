@@ -19,21 +19,8 @@ def claims_registry():
 
 
 @pytest.fixture(scope="session")
-def config(private_pem, public_pem, kid):
-    key = {
-        "public_pem": public_pem,
-        "private_pem": private_pem,
-        "key_type": "RSA",
-    }
-
-    settings.SERVER.loop = "asyncio"
-    settings.log_level = "debug"
-    settings.AUTH.JWT.alg = "RS256"
-    settings.AUTH.JWT.active_kid = kid
-
-    config = settings.to_dict()
-    config["AUTH"]["jwt"]["keys"][kid] = key
-    return config
+def config():
+    return settings.to_dict()
 
 
 @pytest.fixture(scope="module")

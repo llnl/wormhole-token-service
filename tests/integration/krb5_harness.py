@@ -10,15 +10,12 @@ import random
 import shutil
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 
 import pytest
-from dynaconf import Dynaconf
 
 from token_service.auth.kerberos import KerberosConfig, as_realm_tuple, gss_name
 from token_service.utils import expand_path
-
-CONFIG_DIR = Path(__file__).resolve().parents[1] / "config"
+from token_service.config import settings
 
 # k5test drives the MIT krb5 CLI (krb5kdc, kdb5_util, kadmin.local). macOS
 # ships Heimdal, whose binaries are either absent or not interchangeable, so
@@ -82,7 +79,7 @@ def mit_krb5_bin_dirs() -> list[str] | None:
         krb5_config = shutil.which("krb5-config", path=bin_dir)
         if not (krb5kdc and krb5_config):
             continue
-        # Heimdal ships a krb5-config too, so presence is not enough --
+        # Heimdal ships a krb5-config too, so presence is not enough.
         # confirm the vendor before trusting this prefix.
         version = subprocess.run(
             [krb5_config, "--version"], capture_output=True, text=True
@@ -133,14 +130,6 @@ def default_principal_from_ccache(env: dict) -> str | None:
 
 
 def load_test_config() -> Krb5TestConfig:
-    """`TEST.KERBEROS` from `tests/config/test_settings.toml` and its overrides."""
-
-    settings = Dynaconf(
-        settings_files=["test_settings.toml", "test_settings.local.toml"],
-        root_path=CONFIG_DIR,
-        environments=True,
-        PROJECT_DIR=str(CONFIG_DIR.parents[1]),
-    )
     kerberos = settings.TEST.KERBEROS
     return Krb5TestConfig(
         mode=str(kerberos.mode).lower(),
@@ -261,7 +250,7 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
 
         if cfg.uses_ambient_ccache:
             # Deliberately using the developer's own ticket. Leave KRB5CCNAME
-            # exactly as it is -- redirecting it here would hide the very
+            # exactly as it is. Redirecting it here would hide the very
             # credential we were asked to test with.
             user_princ = default_principal_from_ccache(os.environ)
             if user_princ is None:
