@@ -4,6 +4,7 @@ import pendulum
 import requests
 import uuid
 from unittest import mock
+from fastapi import HTTPException
 from requests import HTTPError
 from joserfc import jwt
 from joserfc.jwk import KeySet
@@ -464,6 +465,25 @@ def test_mfa_jwt_creates_token_session(
         # in all cases, we should get a refreshed session after a successful call
         assert session.nbf < now < session.exp
         assert token.claims["token_id"] == session.id
+
+
+def test_get_config(server_api, config, mock_oidc_call):
+    resp = requests.get(f"{server_api}/latest/config")
+
+    resp.raise_for_status()
+    assert resp.json() == {
+        "token": {"max_lifetime_days": config["TOKEN"]["max_lifetime_days"]},
+    }
+
+
+def test_get_config_fails_when_unauthenticated(server_api):
+    with mock.patch(
+        "tests.helpers.fake_deps.oidc_call_target",
+        side_effect=HTTPException(status_code=401),
+    ):
+        resp = requests.get(f"{server_api}/latest/config")
+
+    assert resp.status_code == 401
 
 
 def test_invalid_token_fail_create_user(server_api, UOW, token_headers):

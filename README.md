@@ -229,6 +229,7 @@ Important public endpoints include:
 | `/api/v1/token/jwt` | Exchanges a valid Wormhole access token for a short-lived JWT. |
 | `/api/v1/mfa/jwt` | Exchanges a valid OIDC/MFA session for a short-lived JWT. |
 | `/api/v1/token/rotate` | Rotates eligible tokens after attestation. |
+| `/api/v1/config` | Returns selected service configuration values. |
 
 Important internal/admin endpoints include user, group, and admin token
 management routes under `/api/v1/admin`. Admin token creation is implemented at:
