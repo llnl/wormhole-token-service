@@ -652,6 +652,53 @@ def test_create_token_for_user(
         assert authenticated(uow, token_data["token"])
 
 
+def test_delete_token_by_value_for_user(
+    server_api,
+    UOW,
+    admin_impersonation_auth_headers,
+    a_persisted_user,
+    a_persisted_token,
+    a_token_value,
+):
+    # Setup
+    token_value = f"{a_persisted_token.id}.{a_token_value}"
+
+    # Execute
+    resp = requests.delete(
+        f"{server_api}/latest/admin/token/{a_persisted_user.uid}/{token_value}",
+        headers=admin_impersonation_auth_headers,
+    )
+
+    # Verify
+    resp.raise_for_status()
+    assert resp.status_code == 204
+    with UOW() as uow:
+        assert not uow.token_repo.get(a_persisted_token.id)
+
+
+def test_delete_token_by_value_for_user_fails_without_impersonation_role(
+    server_api,
+    UOW,
+    admin_identity_auth_headers,
+    a_persisted_user,
+    a_persisted_token,
+    a_token_value,
+):
+    # Setup
+    token_value = f"{a_persisted_token.id}.{a_token_value}"
+
+    # Execute
+    resp = requests.delete(
+        f"{server_api}/latest/admin/token/{a_persisted_user.uid}/{token_value}",
+        headers=admin_identity_auth_headers,
+    )
+
+    # Verify
+    assert resp.status_code == 403
+    with UOW() as uow:
+        assert uow.token_repo.get(a_persisted_token.id)
+
+
 def test_create_subtoken_for_user(
     server_api,
     UOW,
