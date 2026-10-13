@@ -295,25 +295,36 @@ Token Service database.
 
 ## Testing
 
+CI runs the lint checks and the full test suite on pull requests and on pushes
+to `main`, with the dependencies pinned in `uv.lock`.
+
 Run lint checks:
 
 ```shell
-uvx tox -e lint
+uv run ruff check token_service tests
+uv run ruff format --check token_service tests
 ```
 
-Run the Python test suite used by CI:
+Run the full test suite, as CI does:
 
 ```shell
-uvx tox -e py311
+uv run pytest
 ```
 
-Run non-integration tests directly:
+The Kerberos integration tests boot an ephemeral MIT krb5 realm with `k5test`
+and are skipped when MIT krb5 is not installed. On Debian or Ubuntu, install
+`krb5-kdc`, `krb5-admin-server`, and `krb5-user`; on macOS, run
+`brew install krb5`.
+
+Run only the non-integration tests:
 
 ```shell
 uv run pytest -m "not integration"
 ```
 
-Tox runs Ruff checks and format checks for `token_service` and `tests`.
+Tox also runs Ruff (`uvx tox -e lint`) and the non-integration tests
+(`uvx tox -e py311`), but resolves its own dependencies instead of using
+`uv.lock`.
 
 ## Developer Notes
 
