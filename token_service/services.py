@@ -193,15 +193,29 @@ def get_subtoken(
         return uow.token_repo.get_subtoken(name, parent_id, external_id)
 
 
+def remove_token_by_id(UOW: BaseUOW, token_id: str, user_uid: str):
+    try:
+        with UOW() as uow:
+            user = uow.user_repo.get(user_uid)
+            if not user:
+                raise NotFound("Not found")
+            token = next(t for t in user.tokens if t.id == token_id)
+            uow.token_repo.remove(token.id)
+    except StopIteration:
+        raise NotFound("Not found")
+
+
 def remove_token_by_value(UOW: BaseUOW, token_value: str, user_uid: str):
     try:
         with UOW() as uow:
             token_id, _ = token_value.split(".")
             user = uow.user_repo.get(user_uid)
+            if not user:
+                raise NotFound("Not found")
             token = next(t for t in user.tokens if t.id == token_id)
             uow.token_repo.remove(token.id)
     except StopIteration:
-        raise NotFound(f"{user_uid}'s token {token_value} not found")
+        raise NotFound("Not found")
     except ValueError:
         raise ValueError("Invalid Token Format")
 
