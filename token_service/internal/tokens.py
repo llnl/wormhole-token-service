@@ -18,7 +18,7 @@ from ..service.uow import BaseUOW
 from ..services import (
     list_admin_tokens,
     remove_admin_token,
-    remove_token_by_value,
+    remove_token_by_id,
     create_token,
     get_subtoken,
     make_composite_token,
@@ -94,18 +94,16 @@ def make_router(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=e.msg
             )
 
-    @router.delete("/{user_uid}/{token_value}", status_code=status.HTTP_204_NO_CONTENT)
-    async def delete_token_by_value_for_user(
+    @router.delete("/{user_uid}/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
+    async def delete_token_by_id_for_user(
         _: Annotated[None, Depends(require_admin_impersonation_role(admin_token_auth))],
         user_uid: str,
-        token_value: str,
+        token_id: str,
     ):
         try:
-            remove_token_by_value(UOW, token_value, user_uid)
+            remove_token_by_id(UOW, token_id, user_uid)
         except NotFound as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.msg)
-        except ValueError:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     @router.get(
         "", status_code=status.HTTP_200_OK, response_model=List[PydanticAdminToken]
