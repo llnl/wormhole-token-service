@@ -172,7 +172,7 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
             "(the test client runs `kinit -kt`)"
         )
 
-    # Restores os.environ on exit, including apply_to_environment's direct writes.
+    # Restores os.environ on exit
     with mock.patch.dict(os.environ):
         # Prefer MIT's kinit when present so the CLI and the KDC agree; unlike
         # k5test, live mode doesn't require it.
