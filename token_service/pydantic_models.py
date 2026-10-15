@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from .models import AdminRole
 
@@ -54,3 +54,15 @@ class JWTResponse(BaseModel):
 
 class TokenRotationRequest(BaseModel):
     ids: list[UUID]
+
+
+class TokenConfigResponse(BaseModel):
+    max_lifetime_days: int = Field(description="Maximum token lifetime in days")
+
+
+# Grouped as in settings.toml. Add new values as typed fields so they appear in
+# the OpenAPI spec, and only expose values safe for any authenticated user.
+class ConfigResponse(BaseModel):
+    """Service settings exposed to clients."""
+
+    token: TokenConfigResponse

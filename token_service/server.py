@@ -20,6 +20,7 @@ from .internal.users import make_router as make_admin_user_router
 from .internal.groups import make_router as make_admin_group_router
 from .routers.well_known import make_router as make_well_known_router
 from .routers.mfa import make_router as make_mfa_router
+from .routers.config import make_router as make_config_router
 from .store.orm import make_engine
 from .service.uow import make_sql_uow
 
@@ -90,6 +91,7 @@ def make_app(config: dict) -> FastAPIOffline:
             api_version, make_well_known_router(jwt_config.jwks), prefix="", versions=[]
         ),
         Endpoint(api_version, make_mfa_router(UOW, jwt_auth, jwt_config, token_config)),
+        Endpoint(api_version, make_config_router(auth, config)),
     ]
 
     # Mounted only when configured

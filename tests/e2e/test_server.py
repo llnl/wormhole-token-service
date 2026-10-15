@@ -4,6 +4,7 @@ import pendulum
 import requests
 import uuid
 from unittest import mock
+from fastapi import HTTPException
 from requests import HTTPError
 from joserfc import jwt
 from joserfc.jwk import KeySet
@@ -466,6 +467,25 @@ def test_mfa_jwt_creates_token_session(
         assert token.claims["token_id"] == session.id
 
 
+def test_get_config(server_api, config, mock_oidc_call):
+    resp = requests.get(f"{server_api}/latest/config")
+
+    resp.raise_for_status()
+    assert resp.json() == {
+        "token": {"max_lifetime_days": config["TOKEN"]["max_lifetime_days"]},
+    }
+
+
+def test_get_config_fails_when_unauthenticated(server_api):
+    with mock.patch(
+        "tests.helpers.fake_deps.oidc_call_target",
+        side_effect=HTTPException(status_code=401),
+    ):
+        resp = requests.get(f"{server_api}/latest/config")
+
+    assert resp.status_code == 401
+
+
 def test_invalid_token_fail_create_user(server_api, UOW, token_headers):
     # Setup
     sync_user_data = {"uid": "sync_user"}
@@ -630,6 +650,108 @@ def test_create_token_for_user(
     token_data = resp.json()
     with UOW() as uow:
         assert authenticated(uow, token_data["token"])
+
+
+def test_delete_token_by_id_for_user(
+    server_api,
+    UOW,
+    admin_impersonation_auth_headers,
+    a_persisted_user,
+    a_persisted_token,
+):
+    # Execute
+    resp = requests.delete(
+        f"{server_api}/latest/admin/token/{a_persisted_user.uid}/{a_persisted_token.id}",
+        headers=admin_impersonation_auth_headers,
+    )
+
+    # Verify
+    resp.raise_for_status()
+    assert resp.status_code == 204
+    with UOW() as uow:
+        assert not uow.token_repo.get(a_persisted_token.id)
+
+
+def test_delete_token_by_id_for_user_fails_without_impersonation_role(
+    server_api,
+    UOW,
+    admin_identity_auth_headers,
+    a_persisted_user,
+    a_persisted_token,
+):
+    # Execute
+    resp = requests.delete(
+        f"{server_api}/latest/admin/token/{a_persisted_user.uid}/{a_persisted_token.id}",
+        headers=admin_identity_auth_headers,
+    )
+
+    # Verify
+    assert resp.status_code == 403
+    with UOW() as uow:
+        assert uow.token_repo.get(a_persisted_token.id)
+
+
+def test_delete_token_by_id_for_user_cannot_delete_another_users_token(
+    server_api,
+    UOW,
+    admin_impersonation_auth_headers,
+    a_persisted_user,
+    make_user,
+    make_token,
+):
+    # Setup
+    other_user = make_user(uid="other-user")
+    other_token = make_token(id="other-token", user_uid=other_user.uid)
+    with UOW() as uow:
+        uow.user_repo.add(other_user)
+        uow.token_repo.add(other_token)
+
+    # Execute
+    resp = requests.delete(
+        f"{server_api}/latest/admin/token/{a_persisted_user.uid}/{other_token.id}",
+        headers=admin_impersonation_auth_headers,
+    )
+
+    # Verify
+    assert resp.status_code == 404
+    with UOW() as uow:
+        assert uow.token_repo.get(other_token.id)
+
+
+def test_delete_token_by_id_for_user_fails_when_token_not_found(
+    server_api,
+    UOW,
+    admin_impersonation_auth_headers,
+    a_persisted_user,
+    a_persisted_token,
+):
+    # Execute
+    resp = requests.delete(
+        f"{server_api}/latest/admin/token/{a_persisted_user.uid}/missing-token",
+        headers=admin_impersonation_auth_headers,
+    )
+
+    # Verify
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Not found"
+    with UOW() as uow:
+        assert uow.token_repo.get(a_persisted_token.id)
+
+
+def test_delete_token_by_id_for_user_fails_when_user_not_found(
+    server_api,
+    admin_impersonation_auth_headers,
+    a_persisted_token,
+):
+    # Execute
+    resp = requests.delete(
+        f"{server_api}/latest/admin/token/missing-user/{a_persisted_token.id}",
+        headers=admin_impersonation_auth_headers,
+    )
+
+    # Verify
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Not found"
 
 
 def test_create_subtoken_for_user(

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          # Restores need an exact key match, so key on the lockfile alone;
+          # pyproject.toml edits that don't change dependencies keep the cache
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      # gssapi, in the dev group, has no Linux wheels and builds against MIT krb5
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libkrb5-dev
+
+      - name: Install dependencies
+        run: uv sync --locked --dev
+
+      - name: Check lint
+        run: uv run ruff check token_service tests
+
+      - name: Check formatting
+        run: uv run ruff format --check token_service tests
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          # Restores need an exact key match, so key on the lockfile alone;
+          # pyproject.toml edits that don't change dependencies keep the cache
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      # libkrb5-dev builds gssapi. The KDC and client tools let k5test run an
+      # ephemeral realm for the Kerberos integration tests, which skip without it.
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libkrb5-dev krb5-kdc krb5-admin-server krb5-user
+
+      - name: Install dependencies
+        run: uv sync --locked --dev
+
+      # -rs lists skip reasons, so a missing KDC shows up in the log
+      - name: Run tests
+        run: uv run pytest -rs
