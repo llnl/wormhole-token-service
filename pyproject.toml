@@ -32,7 +32,7 @@ dependencies = [
     "joserfc>=1.7.1",
     "bcrypt>=5.0.0",
     "tomli-w>=1.2.0",
-    "fastapi-offline==1.7.6",
+    "fastapi-offline==1.7.7",
     "itsdangerous>=2.2.0",
 ]
 dynamic = ["version"]
