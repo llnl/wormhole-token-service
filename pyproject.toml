@@ -29,7 +29,7 @@ dependencies = [
     "multimethod>=2.0.2",
     "pendulum>=3.2.0",
     "authlib>=1.7.2",
-    "joserfc>=1.7.1",
+    "joserfc>=1.7.1,<2",
     "bcrypt>=5.0.0",
     "tomli-w>=1.2.0",
     "fastapi-offline==1.7.6",
@@ -131,6 +131,15 @@ replace = "project_version=\"{new_version}\""
 filename = "helm/token-service/Chart.yaml"
 search = "appVersion: \"{current_version}\""
 replace = "appVersion: \"{new_version}\""
+
+[tool.ruff.lint]
+extend-select = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"tests".msg = "app code must not import the test package"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["TID251"]
 
 [tool.tox]
 legacy_tox_ini = """

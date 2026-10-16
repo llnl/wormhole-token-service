@@ -1,9 +1,9 @@
-.PHONY: sync-dev sync-prod lock lock-check build refresh test run-dev \
-        run-prod pre-commit jwks migrate openapi seed
+.PHONY: sync-dev sync-prod lock lock-check build refresh test test-all run-dev \
+        run-prod pre-commit jwks migrate openapi seed run-local-docker-krb test-live-krb
 
 .NOTPARALLEL:
 
-export WORMHOLE_TOKEN_SVC_DIR := $(CURDIR)
+export WORMHOLE_TOKEN_SVC_DIR ?= $(CURDIR)
 HOST ?= localhost
 PORT ?= 5000
 
@@ -28,12 +28,19 @@ refresh: lock lock-check build
 test: sync-dev
 	uvx tox -e py311
 
+# TODO: use tox in the future. Its env lacks gssapi/k5test for the integration tests.
+test-all: sync-dev
+	uv run pytest tests
+
 run-dev: sync-dev seed
 	uv run wormhole_token_service run --host $(HOST) --port $(PORT)
 
 # find out command to run in production environment
 #run-prod: sync-prod
 #	uv run wormhole_token_service run --host $(HOST) --port $(PORT)
+
+run-local-docker-krb:
+	docker compose -f docker-compose.krb5.yml up -d --wait
 
 pre-commit:
 	uvx pre-commit run
@@ -49,3 +56,8 @@ openapi:
 
 seed: sync-dev
 	uv run wormhole_token_service seed-dev-user
+
+# depends on app database
+test-live-krb: run-local-docker-krb
+	DYNACONF_TEST__KERBEROS__mode=live uv run pytest tests/integration/test_kerberos.py \
+		tests/integration/test_gssapi_handshake.py -m integration -v

@@ -1,0 +1,24 @@
+# Local MIT KDC for Kerberos testing; see docker/krb5/README.md.
+# Writes keytabs and krb5.conf to ./.krb5/ (gitignored).
+
+services:
+  kdc:
+    build:
+      context: ./docker/krb5
+    environment:
+      REALM: "${KRB5_REALM:-WORMHOLE.TEST}"
+      SERVICE_HOST: "${KRB5_SERVICE_HOST:-localhost}"
+      CLIENT_PRINC: "${KRB5_CLIENT_PRINC:-svc-tokentest}"
+      HOST_PORT: "${KRB5_HOST_PORT:-8088}"
+    ports:
+      # Both protocols (without UDP, kinit hangs). 8088 since 88 is privileged on macOS.
+      - "${KRB5_HOST_PORT:-8088}:88/tcp"
+      - "${KRB5_HOST_PORT:-8088}:88/udp"
+    volumes:
+      - ./.krb5:/keytabs
+    healthcheck:
+      # Keytabs are written last, so their presence means the realm is ready.
+      test: ["CMD-SHELL", "test -s /keytabs/service.keytab && test -s /keytabs/krb5.conf"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
