@@ -41,57 +41,40 @@ def seed_settings(seed_config, engine):
 
 
 def test_seed_creates_the_local_user(UOW, seed_args, seed_settings):
-    # Execute
     seed_dev_user(seed_args(uid="dev_user", admin=True))
-
-    # Verify
     user = get_user(UOW, "dev_user")
     assert user.uid == "dev_user"
     assert user.is_admin
 
 
 def test_seed_defaults_to_the_local_machine_username(UOW, seed_args, seed_settings):
-    # Setup/Execute
     with mock.patch(
         "token_service.command.local_username", return_value="machine_user"
     ):
         seed_dev_user(seed_args())
-
-    # Verify
     assert get_user(UOW, "machine_user")
 
 
 def test_seed_is_idempotent(UOW, seed_args, seed_settings):
-    # Execute
     seed_dev_user(seed_args(uid="dev_user", admin=True))
     seed_dev_user(seed_args(uid="dev_user", admin=True))
-
-    # Verify
     assert get_user(UOW, "dev_user").is_admin
 
 
 def test_seed_reconciles_the_admin_flag(UOW, seed_args, seed_settings):
-    # Setup
     seed_dev_user(seed_args(uid="dev_user", admin=True))
     assert get_user(UOW, "dev_user").is_admin
 
-    # Execute
     seed_dev_user(seed_args(uid="dev_user", admin=False))
-
-    # Verify
     assert not get_user(UOW, "dev_user").is_admin
 
 
 def test_seed_falls_back_to_configured_is_admin(
     UOW, seed_args, seed_settings, seed_config
 ):
-    # Setup
     seed_config["AUTH"]["local_dev"] = {"uid": "", "is_admin": False}
 
-    # Execute -- admin=None means "take it from config"
     seed_dev_user(seed_args(uid="dev_user"))
-
-    # Verify
     assert not get_user(UOW, "dev_user").is_admin
 
 
@@ -99,12 +82,8 @@ def test_seed_falls_back_to_configured_is_admin(
 async def test_seeded_user_authenticates(UOW, seed_args, seed_settings):
     """Both halves of the issue together: seed, then authenticate as that user."""
 
-    # Setup
     seed_dev_user(seed_args(uid="dev_user", admin=True))
 
-    # Execute
     user = await LocalDevAuthenticator(UOW, {"uid": "dev_user"})()
-
-    # Verify
     assert user.uid == "dev_user"
     assert user.is_admin

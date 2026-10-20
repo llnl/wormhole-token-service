@@ -1,10 +1,10 @@
 import pytest
 from token_service import models
+from token_service.config import settings
 import pendulum
 import bcrypt
 from joserfc import jwk
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
 
 
 @pytest.fixture
@@ -153,7 +153,7 @@ def make_admin_token(
 
 @pytest.fixture(scope="session")
 def kid():
-    return "my-key-id"
+    return settings.AUTH.JWT.active_kid
 
 
 @pytest.fixture(scope="session")
@@ -163,22 +163,25 @@ def private_key():
 
 @pytest.fixture(scope="session")
 def private_pem(private_key):
-    return private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
+    return jwk.RSAKey.import_key(private_key).as_pem(private=True)
 
 
 @pytest.fixture(scope="session")
-def public_pem(private_key):
-    public_key = private_key.public_key()
-    return public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
+def public_pem(public_key):
+    return public_key.as_pem()
 
 
 @pytest.fixture(scope="session")
-def public_key(public_pem):
-    return jwk.RSAKey.import_key(public_pem)
+def public_key(private_key):
+    return jwk.RSAKey.import_key(private_key.public_key())
+
+
+@pytest.fixture(scope="session", autouse=True)
+def add_keys_to_settings(kid, private_pem, public_pem):
+    settings.set(f"AUTH.jwt.keys.{kid}.private_pem", private_pem.decode())
+    settings.set(f"AUTH.jwt.keys.{kid}.public_pem", public_pem.decode())
+
+
+@pytest.fixture(scope="session")
+def config():
+    return settings.to_dict()

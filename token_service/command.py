@@ -69,8 +69,6 @@ def seed_dev_user(args):
     except AlreadyExists:
         pass
 
-    # Already present -- reconcile the admin flag so re-running with a
-    # different --admin/--no-admin actually takes effect.
     existing = get_user(UOW, uid)
     if existing.is_admin == is_admin:
         logging.debug(f"Dev user {uid!r} already seeded (is_admin={is_admin})")

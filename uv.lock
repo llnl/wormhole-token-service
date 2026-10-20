@@ -2494,7 +2494,7 @@ requires-dist = [
     { name = "fastapi-offline", specifier = "==1.7.7" },
     { name = "gssapi", marker = "extra == 'kerberos'", specifier = ">=1.9,<2" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
-    { name = "joserfc", specifier = ">=1.7.1" },
+    { name = "joserfc", specifier = ">=1.7.1,<2" },
     { name = "multimethod", specifier = ">=2.0.2" },
     { name = "pendulum", specifier = ">=3.2.0" },
     { name = "psycopg2", marker = "extra == 'postgres'", specifier = ">=2.9.12" },

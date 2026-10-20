@@ -2,36 +2,18 @@ import pytest
 
 from joserfc import jwt
 from token_service import models
+from token_service.auth.kerberos import gss_name
 from token_service.config import settings
 from token_service.store.orm import make_engine, reset_db
 from token_service.service.uow import make_sql_uow
 
-from .krb5_harness import gss_name, k5test_env
-
-
-@pytest.fixture(scope="session")
-def config():
-    settings.SERVER.loop = "asyncio"
-    settings.log_level = "debug"
-    return settings.to_dict()
+from .krb5_harness import k5test_env, live_env, load_test_config
 
 
 @pytest.fixture
-def jwt_config(kid, public_pem, private_pem):
-    key = {
-        "public_pem": public_pem,
-        "private_pem": private_pem,
-        "key_type": "RSA",
-    }
-
-    settings.AUTH.JWT.alg = "RS256"
-    settings.AUTH.JWT.active_kid = kid
-
-    all_config = settings.to_dict()
-    config = all_config["AUTH"]["jwt"]
-    config["keys"][kid] = key
-
-    return models.JWTConfig(config)
+def jwt_config():
+    # alg/active_kid from test_settings.toml. PEMs set by tests/conftest.py.
+    return models.JWTConfig(settings.to_dict()["AUTH"]["jwt"])
 
 
 @pytest.fixture(scope="module")
@@ -77,17 +59,32 @@ def a_jwt(jwt_config, a_persisted_user):
 
 
 @pytest.fixture(scope="session")
-def krb5_env():
-    """An ephemeral k5test realm, shared by the whole session.
+def krb_test_config():
+    """`TEST.KERBEROS` from `tests/config/test_settings.toml` and its overrides."""
 
-    Session-scoped on purpose: `k5test` sets process-wide GSSAPI state
+    return load_test_config()
+
+
+@pytest.fixture(scope="session")
+def krb5_env(krb_test_config, tmp_path_factory):
+    """A usable Kerberos environment, ephemeral or live.
+
+    Session-scoped on purpose. `k5test` sets process-wide GSSAPI state
     (KRB5_CONFIG, KRB5_KTNAME, KRB5CCNAME).
 
     Yields:
         A `Krb5Env` describing the realm.
     """
 
-    yield from k5test_env()
+    if krb_test_config.mode == "k5test":
+        yield from k5test_env()
+    elif krb_test_config.mode == "live":
+        yield from live_env(krb_test_config, tmp_path_factory)
+    else:
+        pytest.fail(
+            f"unknown TEST.KERBEROS.mode {krb_test_config.mode!r}; "
+            "expected 'k5test' or 'live'"
+        )
 
 
 @pytest.fixture(scope="session")
