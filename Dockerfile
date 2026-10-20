@@ -2,7 +2,7 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-ARG project_version="0.2.5"
+ARG project_version="0.2.6"
 
 COPY pyproject.toml pyproject.toml
 COPY uv.lock uv.lock
