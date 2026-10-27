@@ -28,6 +28,14 @@ class KerberosAuthError(Exception):
     """
 
 
+class KerberosUnavailableError(Exception):
+    """The service cannot accept Kerberos logins, whatever the caller sends.
+
+    Raised when the acceptor credential cannot be built, e.g. the keytab is
+    missing, empty or not a keytab.
+    """
+
+
 class KerberosConfigError(ValueError):
     """`AUTH.kerberos` is configured in a way the service refuses to run with.
 
@@ -149,7 +157,11 @@ class KerberosAcceptor:
         """The acceptor credential, built on first use.
 
         Lazy on purpose: a missing or unreadable keytab must fail this one
-        endpoint rather than prevent the whole service from starting.
+        endpoint rather than prevent the whole service from starting. A
+        failure is not cached, so a fixed keytab is picked up on the next call.
+
+        Raises:
+            KerberosUnavailableError: If the credential cannot be built.
         """
 
         import gssapi
@@ -157,9 +169,12 @@ class KerberosAcceptor:
         if self._creds is None:
             service_name = self.config.service_name
             name = gss_name(service_name) if service_name else None
-            object.__setattr__(
-                self, "_creds", gssapi.Credentials(usage="accept", name=name)
-            )
+            try:
+                creds = gssapi.Credentials(usage="accept", name=name)
+            except gssapi.exceptions.GSSError as e:
+                logger.error(f"Kerberos acceptor credential unavailable: {e}")
+                raise KerberosUnavailableError("acceptor credential unavailable") from e
+            object.__setattr__(self, "_creds", creds)
         return self._creds
 
     def step(self, client_token: bytes) -> AcceptResult:
@@ -172,6 +187,7 @@ class KerberosAcceptor:
 
         Raises:
             KerberosAuthError: If the mechanism rejects the token.
+            KerberosUnavailableError: If the acceptor credential cannot be built.
         """
 
         import gssapi
@@ -223,6 +239,7 @@ __all__ = [
     "KerberosAuthError",
     "KerberosConfig",
     "KerberosConfigError",
+    "KerberosUnavailableError",
     "as_realm_tuple",
     "gss_name",
 ]

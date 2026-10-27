@@ -7,6 +7,7 @@ from token_service.auth.kerberos import (
     KerberosAuthError,
     KerberosConfig,
     KerberosConfigError,
+    KerberosUnavailableError,
     as_realm_tuple,
     gss_name,
 )
@@ -129,6 +130,37 @@ def test_a_rejected_token_becomes_a_kerberos_auth_error():
         ctx.step.side_effect = gssapi.exceptions.GSSError("rejected")
         with pytest.raises(KerberosAuthError):
             acceptor.step(b"garbage")
+
+
+def test_an_unusable_keytab_is_unavailable_and_retried_on_the_next_call():
+    acceptor = make_acceptor()
+
+    with fake_gssapi(mock.MagicMock()) as gssapi:
+        gssapi.Credentials.side_effect = gssapi.exceptions.GSSError("no keytab")
+        with pytest.raises(KerberosUnavailableError):
+            acceptor.step(b"garbage")
+
+        gssapi.Credentials.side_effect = None
+        acceptor.step(b"garbage")
+
+    assert gssapi.Credentials.call_count == 2
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param(b"", id="empty"),
+        pytest.param(b"\x5d\x11not-a-keytab", id="not_a_keytab"),
+    ],
+)
+def test_a_real_unusable_keytab_is_unavailable(monkeypatch, tmp_path, content):
+    pytest.importorskip("gssapi")
+    keytab = tmp_path / "service.keytab"
+    keytab.write_bytes(content)
+    monkeypatch.setenv("KRB5_KTNAME", f"FILE:{keytab}")
+
+    with pytest.raises(KerberosUnavailableError):
+        make_acceptor().creds
 
 
 def test_an_incomplete_context_is_a_result_not_an_error():
