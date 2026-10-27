@@ -24,7 +24,12 @@ from authlib.integrations.starlette_client import StarletteOAuth2App, OAuth
 from starlette.middleware.sessions import SessionMiddleware
 from urllib.parse import unquote
 
-from .auth.kerberos import KerberosAcceptor, KerberosAuthError, KerberosConfig
+from .auth.kerberos import (
+    KerberosAcceptor,
+    KerberosAuthError,
+    KerberosConfig,
+    KerberosUnavailableError,
+)
 from .models import User, AdminRole, JWTConfig
 from .service.uow import BaseUOW
 from .services import (
@@ -469,6 +474,11 @@ class KerberosAuthenticator(BaseUserAuthDependency):
             result = self.acceptor.step(client_token)
         except KerberosAuthError:
             raise self._unauthorized_error()
+        except KerberosUnavailableError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Kerberos authentication unavailable",
+            )
 
         if not result.complete:
             raise self._unauthorized_error(result.token)
