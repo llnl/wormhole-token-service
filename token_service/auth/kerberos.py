@@ -156,7 +156,6 @@ class KerberosAcceptor:
             if value and (not os.path.isabs(path) or "$" in path):
                 raise KerberosConfigError(
                     f"{setting} must be an absolute path, got {value!r}. "
-                    "Use @format {env[HOME]}/... instead of ~ or $VARS."
                 )
 
     @property
