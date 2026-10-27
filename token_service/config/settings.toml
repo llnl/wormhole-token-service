@@ -51,9 +51,9 @@ secret_key = "secret"
 enabled = false
 # Acceptor SPN: "HTTP/host@REALM" or "HTTP@host". Empty accepts any SPN in the keytab.
 service_name = ""
-# Acceptor keytab, exported as KRB5_KTNAME. Empty uses the ambient keytab.
+# Acceptor keytab (absolute path), exported as KRB5_KTNAME. Empty uses the ambient keytab.
 keytab = ""
-# krb5.conf, exported as KRB5_CONFIG. Empty uses the host's /etc/krb5.conf.
+# krb5.conf (absolute path), exported as KRB5_CONFIG. Empty uses the host's /etc/krb5.conf.
 krb5_config = ""
 # Exactly one realm, e.g. ["EXAMPLE.GOV"]. Empty or more than one refuses to start.
 allowed_realms = []
