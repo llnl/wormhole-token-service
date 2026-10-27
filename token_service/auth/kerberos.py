@@ -12,8 +12,6 @@ import os
 
 from attrs import define, field
 
-from ..utils import expand_path
-
 logger = logging.getLogger(__name__)
 
 
@@ -85,8 +83,8 @@ class KerberosConfig:
     def from_mapping(cls, config: dict) -> "KerberosConfig":
         return cls(
             service_name=config.get("service_name", "") or "",
-            keytab=expand_path(config.get("keytab")),
-            krb5_config=expand_path(config.get("krb5_config")),
+            keytab=config.get("keytab") or "",
+            krb5_config=config.get("krb5_config") or "",
             allowed_realms=as_realm_tuple(config.get("allowed_realms")),
         )
 
@@ -143,6 +141,14 @@ class KerberosAcceptor:
                 f"got {len(realms)}: {list(realms)}. multiple realms "
                 "currently not supported."
             )
+
+        for setting in ("keytab", "krb5_config"):
+            value = getattr(self.config, setting)
+            path = value.removeprefix("FILE:")
+            if value and (not os.path.isabs(path) or "$" in path):
+                raise KerberosConfigError(
+                    f"{setting} must be an absolute path, got {value!r}. "
+                )
 
     @property
     def creds(self):

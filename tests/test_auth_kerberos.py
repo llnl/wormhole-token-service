@@ -193,17 +193,24 @@ def test_setting_is_exported_to_its_env_var(monkeypatch, key, env_var):
     assert os.environ[env_var] == "/tmp/some-file"
 
 
-def test_keytab_path_is_expanded_before_export(monkeypatch, tmp_path):
-    """An unexpanded path would reach the krb5 library as a relative path.
+@pytest.mark.parametrize("key", ["keytab", "krb5_config"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param("relative/x", id="relative"),
+        pytest.param("~/x", id="tilde"),
+        pytest.param("$HOME/x", id="env_var"),
+        pytest.param("/opt/${UNSET}/x", id="env_var_inside"),
+    ],
+)
+def test_a_path_that_is_not_absolute_refuses_to_start(key, value):
+    with pytest.raises(KerberosConfigError, match=f"^{key} must be an absolute"):
+        make_acceptor(**{key: value})
 
-    The path forms themselves are covered in `test_utils.py`.
-    """
 
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.delenv("KRB5_KTNAME", raising=False)
-
-    KerberosConfig.from_mapping({"keytab": "$HOME/x.keytab"}).apply_to_environment()
-    assert os.environ["KRB5_KTNAME"] == f"{tmp_path}/x.keytab"
+@pytest.mark.parametrize("value", ["/etc/krb5.keytab", "FILE:/etc/krb5.keytab", ""])
+def test_an_absolute_or_empty_keytab_is_accepted(value):
+    make_acceptor(keytab=value)
 
 
 def test_empty_keytab_does_not_clobber_the_ambient_environment(monkeypatch):

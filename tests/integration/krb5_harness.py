@@ -23,7 +23,6 @@ from unittest import mock
 import pytest
 
 from token_service.auth.kerberos import KerberosConfig, as_realm_tuple
-from token_service.utils import expand_path
 from token_service.config import settings
 
 # k5test drives the MIT krb5 CLI (krb5kdc, kdb5_util, kadmin.local). macOS
@@ -81,21 +80,15 @@ def mit_krb5_bin_dirs() -> list[str] | None:
     return None
 
 
-def unresolved_vars(path: str) -> bool:
-    """True if a path still holds an unexpanded `$VAR` after expansion."""
-
-    return "$" in path
-
-
 def load_test_config() -> Krb5TestConfig:
     kerberos = settings.TEST.KERBEROS
     return Krb5TestConfig(
         mode=str(kerberos.mode).lower(),
         service_name=kerberos.service_name or None,
-        keytab=expand_path(kerberos.keytab),
-        krb5_config=expand_path(kerberos.krb5_config),
+        keytab=kerberos.keytab or "",
+        krb5_config=kerberos.krb5_config or "",
         client_principal=kerberos.client_principal or None,
-        client_keytab=expand_path(kerberos.client_keytab),
+        client_keytab=kerberos.client_keytab or "",
         allowed_realms=as_realm_tuple(kerberos.allowed_realms),
     )
 
@@ -157,14 +150,7 @@ def live_env(cfg: Krb5TestConfig, tmp_path_factory):
         ("krb5.conf (TEST.KERBEROS.krb5_config)", cfg.krb5_config),
         ("client keytab (TEST.KERBEROS.client_keytab)", cfg.client_keytab),
     ):
-        if not path:
-            continue
-        if unresolved_vars(path):
-            pytest.skip(
-                f"{label} still contains an unexpanded variable after "
-                f"expansion. Is it set in this environment? {path}"
-            )
-        if not os.access(path, os.R_OK):
+        if path and not os.access(path, os.R_OK):
             pytest.skip(f"{label} is not readable: {path}")
     if not (cfg.client_keytab and cfg.client_principal):
         pytest.skip(
