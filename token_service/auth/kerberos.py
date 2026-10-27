@@ -29,7 +29,7 @@ class KerberosAuthError(Exception):
 
 
 class KerberosUnavailableError(Exception):
-    """The service cannot accept Kerberos logins, whatever the caller sends.
+    """Server side kerberos error.
 
     Raised when the acceptor credential cannot be built, e.g. the keytab is
     missing, empty or not a keytab.
