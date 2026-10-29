@@ -472,7 +472,10 @@ def test_get_config(server_api, config, mock_oidc_call):
 
     resp.raise_for_status()
     assert resp.json() == {
-        "token": {"max_lifetime_days": config["TOKEN"]["max_lifetime_days"]},
+        "token": {
+            "session_name": config["TOKEN"]["session_name"],
+            "max_lifetime_days": config["TOKEN"]["max_lifetime_days"],
+        },
     }
 
 
