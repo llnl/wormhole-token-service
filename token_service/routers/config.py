@@ -13,6 +13,7 @@ def make_router(auth: BaseUserAuthDependency, config: dict):
     # Settings are fixed for the life of the process, so build the response once
     config_response = ConfigResponse(
         token=TokenConfigResponse(
+            session_name=config["TOKEN"]["session_name"],
             max_lifetime_days=config["TOKEN"]["max_lifetime_days"],
         ),
     )
