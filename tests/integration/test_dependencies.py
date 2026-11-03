@@ -234,6 +234,25 @@ async def test_gsserror_becomes_a_401_not_a_500(UOW):
 
 
 @pytest.mark.asyncio
+async def test_unusable_keytab_is_a_503(UOW):
+    """A server-side keytab load error."""
+
+    from token_service.auth.kerberos import KerberosUnavailableError
+
+    auth = make_kerberos_authenticator(UOW)
+    response = Response()
+
+    with mock.patch.object(
+        type(auth.acceptor), "creds", new_callable=mock.PropertyMock
+    ) as creds:
+        creds.side_effect = KerberosUnavailableError("no keytab")
+        with pytest.raises(HTTPException) as exc:
+            await auth(response, "Negotiate Z2FyYmFnZQ==")
+
+    assert exc.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+
+@pytest.mark.asyncio
 async def test_incomplete_context_returns_the_continuation_token(UOW):
     """Multi-leg negotiation gets a 401 carrying the next token, not a 403."""
 
