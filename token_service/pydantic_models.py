@@ -57,6 +57,7 @@ class TokenRotationRequest(BaseModel):
 
 
 class TokenConfigResponse(BaseModel):
+    session_name: str = Field(description="Name of the MFA session token")
     max_lifetime_days: int = Field(description="Maximum token lifetime in days")
 
 
