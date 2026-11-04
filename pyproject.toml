@@ -127,11 +127,6 @@ filename = "Dockerfile"
 search = "project_version=\"{current_version}\""
 replace = "project_version=\"{new_version}\""
 
-[[tool.bumpversion.files]]
-filename = "helm/token-service/Chart.yaml"
-search = "appVersion: \"{current_version}\""
-replace = "appVersion: \"{new_version}\""
-
 [tool.ruff.lint]
 extend-select = ["TID251"]
 
