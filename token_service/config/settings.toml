@@ -4,7 +4,9 @@ log_level = "INFO"
 api_version = "v1"
 
 [default.AUTH]
-auth_name = "base_auth"
+# Options: "base_auth", "authlib_oidc", "jwt", "local_dev"
+# Use "jwt" to enable JWT-based authentication (Phase 1 migration)
+auth_name = "authlib_oidc"  # Default to OAuth
 
 [default.AUTH.base_auth]
 
@@ -38,9 +40,19 @@ key_type = "RSA"
 public_pem = ""
 private_pem = ""
 
-[default.AUTH.oauth_jwt]
-jwks_url = "http://localhost:5000/.well-known/jwks.json"
+# JWT authentication for validating Token Service's own JWTs
+# (used when auth_name = "jwt")
+[default.AUTH.user_jwt]
+jwks_url = "http://localhost:5000/.well-known/jwks.json"  # Self-referential
 leeway = 300
+jwks_cache_ttl = 300
+
+# JWT authentication for validating oauth2-proxy JWTs
+# (used by /mfa/jwt endpoint to validate incoming oauth2-proxy tokens)
+[default.AUTH.oauth_jwt]
+jwks_url = "http://localhost:5000/.well-known/jwks.json"  # TODO: Update to oauth2-proxy URL when deployed
+leeway = 300
+jwks_cache_ttl = 300
 
 [default.AUTH.admin]
 secret_key = "secret"
