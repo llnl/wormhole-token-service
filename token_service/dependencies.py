@@ -345,10 +345,10 @@ class BaseJWTAuthenticator:
     __call__() to transform validated claims into domain objects.
     """
     config: dict
-    jwks_url: str = field()
-    jwks_cache_ttl: int = field()
-    leeway: int = field()
-    claims_registry: jwt.JWTClaimsRegistry = field()
+    jwks_url: str = field(kw_only=True)
+    jwks_cache_ttl: int = field(kw_only=True)
+    leeway: int = field(kw_only=True)
+    claims_registry: jwt.JWTClaimsRegistry = field(kw_only=True)
 
     def __hash__(self):
         return hash(self.__class__.__name__)
