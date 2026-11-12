@@ -59,13 +59,17 @@ class FakeOIDCAuthenticator:
 class FakeJWTAuthenticator:
     """Fake for UserJWTAuthenticator in tests."""
     config: dict
-    uow: Any
+    UOW: Any  # Uppercase to match UserJWTAuthenticator signature
 
     def __hash__(self):
         return hash(self.__class__.__name__)
 
     def __call__(self) -> User | None:
         return jwt_call_target()
+
+    def setup(self, app):
+        """No-op setup to match UserJWTAuthenticator interface."""
+        pass
 
 
 # Alias for backward compatibility
