@@ -39,7 +39,7 @@ async def server(config):
             "token_service.server.AuthenticatorFactory.make_authenticator",
             new=FakeOIDCAuthenticator,
         ),
-        mock.patch("token_service.server.JWTAuthenticator", new=FakeJWTAuthenticator),
+        mock.patch("token_service.server.UserJWTAuthenticator", new=FakeJWTAuthenticator),
     ):
         server = make_server(config)
 

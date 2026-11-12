@@ -57,6 +57,7 @@ class FakeOIDCAuthenticator:
 
 @define
 class FakeJWTAuthenticator:
+    """Fake for UserJWTAuthenticator in tests."""
     config: dict
     uow: Any
 
@@ -65,6 +66,10 @@ class FakeJWTAuthenticator:
 
     def __call__(self) -> User | None:
         return jwt_call_target()
+
+
+# Alias for backward compatibility
+FakeUserJWTAuthenticator = FakeJWTAuthenticator
 
 
 @contextmanager
