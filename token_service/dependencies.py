@@ -442,6 +442,9 @@ class UserJWTAuthenticator(BaseJWTAuthenticator, BaseUserAuthDependency):
     """
     UOW: BaseUOW
 
+    def __hash__(self):
+        return hash(self.__class__.__name__)
+
     async def __call__(
         self, x_auth_request_access_token: Annotated[str, Header()]
     ) -> User:
