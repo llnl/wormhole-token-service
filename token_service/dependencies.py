@@ -17,7 +17,7 @@ from fastapi import (
 from fastapi.responses import RedirectResponse
 from joserfc import jwt
 from joserfc.jwk import KeySet
-from joserfc.errors import InvalidClaimError, MissingClaimError
+from joserfc.errors import DecodeError, InvalidClaimError, MissingClaimError
 from typing import Annotated
 from types import MethodType
 from authlib.integrations.starlette_client import StarletteOAuth2App, OAuth
@@ -413,7 +413,13 @@ class BaseJWTAuthenticator:
         Raises:
             HTTPException: If JWT is invalid or claims validation fails
         """
-        token = jwt.decode(token_string, self.get_jwks())
+        try:
+            token = jwt.decode(token_string, self.get_jwks())
+        except DecodeError as e:
+            logger.error(f"Decode error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
 
         try:
             self.claims_registry.validate(token.claims)
