@@ -187,12 +187,11 @@ async def test_user_jwt_authenticator_raises_401_when_user_not_found(
     UOW, oauth_jwt_config, jwt_config, a_jwks_response, a_jwt
 ):
     """Test UserJWTAuthenticator raises 401 when user doesn't exist in DB."""
-    # Setup - create a JWT for a user that doesn't exist
+    # Setup
     with mock.patch("token_service.dependencies.requests") as mock_requests:
         mock_requests.get.return_value = a_jwks_response
         jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
 
-        # Mock the user lookup to raise NotFound
         with mock.patch("token_service.dependencies.get_user") as mock_get_user:
             from token_service.services import NotFound
 
@@ -214,7 +213,7 @@ async def test_user_jwt_authenticator_raises_401_on_invalid_jwt(
         mock_requests.get.return_value = a_jwks_response
         jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
 
-        # Execute and Verify - invalid JWT should raise 401
+        # Execute and Verify
         with pytest.raises(HTTPException) as excinfo:
             await jwt_auth("invalid.jwt.token")
         assert excinfo.value.status_code == status.HTTP_401_UNAUTHORIZED

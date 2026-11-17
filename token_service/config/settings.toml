@@ -50,7 +50,7 @@ jwks_cache_ttl = 300
 # JWT authentication for validating oauth2-proxy JWTs
 # (used by /mfa/jwt endpoint to validate incoming oauth2-proxy tokens)
 [default.AUTH.oauth_jwt]
-jwks_url = "http://localhost:5000/.well-known/jwks.json"  # TODO: Update to oauth2-proxy URL when deployed
+jwks_url = "http://localhost:5000/.well-known/jwks.json"
 leeway = 300
 jwks_cache_ttl = 300
 
