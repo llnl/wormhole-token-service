@@ -11,7 +11,6 @@ from token_service.dependencies import (
     AuthenticatorFactory,
     LocalDevAuthenticator,
     require_admin,
-    BaseJWTAuthenticator,
     UserJWTAuthenticator,
 )
 
@@ -221,22 +220,22 @@ async def test_user_jwt_authenticator_raises_401_on_invalid_jwt(
 
 
 @pytest.mark.asyncio
-async def test_user_jwt_authenticator_factory_integration(UOW, config):
-    """Test UserJWTAuthenticator works with AuthenticatorFactory."""
-    # Setup
-    factory = AuthenticatorFactory()
-    jwt_config = {"jwt": {"jwks_url": "http://test", "jwks_cache_ttl": 300}}
-    auth_config = {
-        "auth_name": "jwt",
-        **jwt_config
-    }
-
-    # Execute
-    auth = factory.make_authenticator(UOW, auth_config)
+async def test_user_jwt_authenticator_can_be_instantiated(UOW, oauth_jwt_config):
+    """Test UserJWTAuthenticator can be instantiated directly."""
+    # Setup and Execute
+    jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
 
     # Verify
-    assert isinstance(auth, UserJWTAuthenticator)
-    assert auth.UOW is UOW
+    assert jwt_auth.UOW is UOW
+    assert jwt_auth.config == oauth_jwt_config
+    assert callable(jwt_auth)
+
+
+def test_user_jwt_authenticator_is_registered_in_factory():
+    """Test UserJWTAuthenticator is registered in the factory."""
+    factory = AuthenticatorFactory()
+    assert "jwt" in factory.authenticators
+    assert factory.authenticators["jwt"] is UserJWTAuthenticator
 
 
 def make_kerberos_authenticator(UOW, **config):
