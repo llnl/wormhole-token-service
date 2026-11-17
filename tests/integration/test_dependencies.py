@@ -11,7 +11,7 @@ from token_service.dependencies import (
     AuthenticatorFactory,
     LocalDevAuthenticator,
     require_admin,
-    JWTAuthenticator,
+    UserJWTAuthenticator,
 )
 
 # Treat unawaited coroutine warnings as errors for this file
@@ -131,13 +131,14 @@ def test_local_dev_is_registered_with_the_factory(config):
 
 
 @pytest.mark.asyncio
-async def test_jwt_authenticator(
+async def test_user_jwt_authenticator(
     UOW, a_persisted_user, oauth_jwt_config, jwt_config, a_jwks_response, a_jwt
 ):
+    """Test UserJWTAuthenticator returns User object for valid JWT."""
     # Setup/Execute
     with mock.patch("token_service.dependencies.requests") as mock_requests:
         mock_requests.get.return_value = a_jwks_response
-        jwt_auth = JWTAuthenticator(oauth_jwt_config, UOW)
+        jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
         user = await jwt_auth(a_jwt)
 
     # Verify
@@ -146,13 +147,14 @@ async def test_jwt_authenticator(
 
 
 @pytest.mark.asyncio
-async def test_jwt_authenticator_caches_jwks_call(
+async def test_user_jwt_authenticator_caches_jwks_call(
     UOW, a_persisted_user, oauth_jwt_config, jwt_config, a_jwks_response, a_jwt
 ):
+    """Test UserJWTAuthenticator caches JWKS fetches."""
     # Setup/Execute
     with mock.patch("token_service.dependencies.requests") as mock_requests:
         mock_requests.get.return_value = a_jwks_response
-        jwt_auth = JWTAuthenticator(oauth_jwt_config, UOW)
+        jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
         await jwt_auth(a_jwt)
         assert mock_requests.get.call_count == 1
 
@@ -162,20 +164,78 @@ async def test_jwt_authenticator_caches_jwks_call(
 
 
 @pytest.mark.asyncio
-async def test_jwt_authenticator_jwks_cache_expires_after_duration(
+async def test_user_jwt_authenticator_jwks_cache_expires_after_duration(
     UOW, a_persisted_user, oauth_jwt_config, jwt_config, a_jwks_response, a_jwt
 ):
+    """Test UserJWTAuthenticator cache expiration."""
     # Setup/Execute
     with mock.patch("token_service.dependencies.requests") as mock_requests:
         ttl = 0.2
         mock_requests.get.return_value = a_jwks_response
-        jwt_auth = JWTAuthenticator(oauth_jwt_config, UOW, jwks_cache_ttl=ttl)
+        config = {**oauth_jwt_config, "jwks_cache_ttl": ttl}
+        jwt_auth = UserJWTAuthenticator(config=config, UOW=UOW)
         await jwt_auth(a_jwt)
         assert mock_requests.get.call_count == 1
 
         time.sleep(ttl)
         await jwt_auth(a_jwt)
         assert mock_requests.get.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_user_jwt_authenticator_raises_401_when_user_not_found(
+    UOW, oauth_jwt_config, jwt_config, a_jwks_response, a_jwt
+):
+    """Test UserJWTAuthenticator raises 401 when user doesn't exist in DB."""
+    # Setup
+    with mock.patch("token_service.dependencies.requests") as mock_requests:
+        mock_requests.get.return_value = a_jwks_response
+        jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
+
+        with mock.patch("token_service.dependencies.get_user") as mock_get_user:
+            from token_service.services import NotFound
+
+            mock_get_user.side_effect = NotFound("User not found")
+
+            # Execute and Verify
+            with pytest.raises(HTTPException) as excinfo:
+                await jwt_auth(a_jwt)
+            assert excinfo.value.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.asyncio
+async def test_user_jwt_authenticator_raises_401_on_invalid_jwt(
+    UOW, oauth_jwt_config, jwt_config, a_jwks_response
+):
+    """Test UserJWTAuthenticator raises 401 for invalid JWT."""
+    # Setup
+    with mock.patch("token_service.dependencies.requests") as mock_requests:
+        mock_requests.get.return_value = a_jwks_response
+        jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
+
+        # Execute and Verify
+        with pytest.raises(HTTPException) as excinfo:
+            await jwt_auth("invalid.jwt.token")
+        assert excinfo.value.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.asyncio
+async def test_user_jwt_authenticator_can_be_instantiated(UOW, oauth_jwt_config):
+    """Test UserJWTAuthenticator can be instantiated directly."""
+    # Setup and Execute
+    jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
+
+    # Verify
+    assert jwt_auth.UOW is UOW
+    assert jwt_auth.config == oauth_jwt_config
+    assert callable(jwt_auth)
+
+
+def test_user_jwt_authenticator_is_registered_in_factory():
+    """Test UserJWTAuthenticator is registered in the factory."""
+    factory = AuthenticatorFactory()
+    assert "jwt" in factory.authenticators
+    assert factory.authenticators["jwt"] is UserJWTAuthenticator
 
 
 def make_kerberos_authenticator(UOW, **config):

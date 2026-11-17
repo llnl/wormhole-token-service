@@ -8,7 +8,7 @@ from fastapi.openapi.utils import get_openapi
 from token_service import __version__
 from .dependencies import (
     AuthenticatorFactory,
-    JWTAuthenticator,
+    UserJWTAuthenticator,
     TokenAuthenticator,
     AdminTokenAuthenticator,
 )
@@ -65,12 +65,17 @@ def make_app(config: dict) -> FastAPIOffline:
     # init deps
     auth_config = config.get("AUTH", {})
     token_config = config.get("TOKEN")
+
     authenticator_factory = AuthenticatorFactory()
     auth = authenticator_factory.make_authenticator(UOW, auth_config)
+
     jwt_config = JWTConfig(auth_config["jwt"])
     token_auth = TokenAuthenticator(UOW, jwt_config)
+
+    # JWT authenticator for /mfa/jwt endpoint (always validates oauth2-proxy JWTs)
     oauth_jwt_config = auth_config["oauth_jwt"]
-    jwt_auth = JWTAuthenticator(oauth_jwt_config, UOW)
+    oauth_jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
+
     admin_token_auth = AdminTokenAuthenticator(UOW)
 
     root_path = config.get("ROOT_PATH", "")
@@ -90,7 +95,9 @@ def make_app(config: dict) -> FastAPIOffline:
         Endpoint(
             api_version, make_well_known_router(jwt_config.jwks), prefix="", versions=[]
         ),
-        Endpoint(api_version, make_mfa_router(UOW, jwt_auth, jwt_config, token_config)),
+        Endpoint(
+            api_version, make_mfa_router(UOW, oauth_jwt_auth, jwt_config, token_config)
+        ),
         Endpoint(api_version, make_config_router(auth, config)),
     ]
 

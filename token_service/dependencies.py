@@ -17,7 +17,7 @@ from fastapi import (
 from fastapi.responses import RedirectResponse
 from joserfc import jwt
 from joserfc.jwk import KeySet
-from joserfc.errors import InvalidClaimError, MissingClaimError
+from joserfc.errors import DecodeError, InvalidClaimError, MissingClaimError
 from typing import Annotated
 from types import MethodType
 from authlib.integrations.starlette_client import StarletteOAuth2App, OAuth
@@ -150,6 +150,7 @@ class AuthenticatorFactory:
             "base_auth": BaseUserAuthDependency,
             "authlib_oidc": AuthLibOIDCAuthenticator,
             "local_dev": LocalDevAuthenticator,
+            "jwt": UserJWTAuthenticator,
         }
 
     def make_authenticator(self, uow, config):
@@ -336,13 +337,19 @@ def require_admin_identity_role(admin_token_auth: AdminTokenAuthenticator):
 
 
 @define(slots=False)
-class JWTAuthenticator:
+class BaseJWTAuthenticator:
+    """Base class for JWT authentication.
+
+    Handles core JWT validation logic including JWKS fetching, caching,
+    signature verification, and claims validation. Subclasses override
+    __call__() to transform validated claims into domain objects.
+    """
+
     config: dict
-    UOW: BaseUOW
-    jwks_url: str = field()
-    jwks_cache_ttl: int = field()
-    leeway: int = field()
-    claims_registry: jwt.JWTClaimsRegistry = field()
+    jwks_url: str = field(kw_only=True)
+    jwks_cache_ttl: int = field(kw_only=True)
+    leeway: int = field(kw_only=True)
+    claims_registry: jwt.JWTClaimsRegistry = field(kw_only=True)
 
     def __hash__(self):
         return hash(self.__class__.__name__)
@@ -354,7 +361,6 @@ class JWTAuthenticator:
     @jwks_cache_ttl.default
     def _jwks_cache_ttl(self):
         """Cache lifetime in seconds."""
-
         return self.config.get("jwks_cache_ttl", 300)
 
     @leeway.default
@@ -373,13 +379,17 @@ class JWTAuthenticator:
 
         Wrap the existing get_jwks method in a timed cache
         """
-
+        # Use the subclass name for the cache key
         wrapped = MethodType(
-            timed_lru_cache(self.jwks_cache_ttl)(JWTAuthenticator.get_jwks), self
+            timed_lru_cache(self.jwks_cache_ttl)(self.__class__.get_jwks), self
         )
         object.__setattr__(self, "get_jwks", wrapped)
 
     def get_jwks(self) -> KeySet:
+        """Fetch JWKS from remote URL.
+
+        This method is wrapped with a timed LRU cache in __attrs_post_init__.
+        """
         # TODO make timeout configurable
         resp = requests.get(f"{self.jwks_url}", timeout=5)
         try:
@@ -392,12 +402,25 @@ class JWTAuthenticator:
 
         return KeySet.import_key_set(resp.json())
 
-    async def __call__(
-        self, x_auth_request_access_token: Annotated[str, Header()]
-    ) -> User:
-        """Performs jwt authentication."""
+    def _validate_jwt(self, token_string: str) -> dict:
+        """Validate JWT and return claims dict.
 
-        token = jwt.decode(x_auth_request_access_token, self.get_jwks())
+        Args:
+            token_string: Raw JWT string
+
+        Returns:
+            Validated claims dictionary
+
+        Raises:
+            HTTPException: If JWT is invalid or claims validation fails
+        """
+        try:
+            token = jwt.decode(token_string, self.get_jwks())
+        except DecodeError as e:
+            logger.error(f"Decode error: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+            )
 
         try:
             self.claims_registry.validate(token.claims)
@@ -412,11 +435,49 @@ class JWTAuthenticator:
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
 
+        return token.claims
+
+
+@define(slots=False)
+class UserJWTAuthenticator(BaseJWTAuthenticator, BaseUserAuthDependency):
+    """JWT authenticator that returns User objects.
+
+    Validates JWTs and transforms claims into User domain objects by
+    looking up the user in the database via the 'sub' claim.
+
+    Compatible with BaseUserAuthDependency for use in AuthenticatorFactory.
+    """
+
+    UOW: BaseUOW
+
+    def __hash__(self):
+        return hash(self.__class__.__name__)
+
+    async def __call__(
+        self, x_auth_request_access_token: Annotated[str, Header()]
+    ) -> User:
+        """Performs JWT authentication and returns User.
+
+        Args:
+            x_auth_request_access_token: JWT from header (oauth2-proxy convention)
+
+        Returns:
+            Authenticated User object
+
+        Raises:
+            HTTPException: If authentication fails
+        """
+        claims = self._validate_jwt(x_auth_request_access_token)
+
         with self.UOW() as uow:
             try:
-                return get_user(uow, token.claims["sub"])
+                return get_user(uow, claims["sub"])
             except NotFound:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+    def setup(self, app: FastAPI) -> None:
+        """No setup needed for JWT auth (no middleware or routes required)."""
+        pass
 
 
 @define(slots=False)
