@@ -65,18 +65,16 @@ def make_app(config: dict) -> FastAPIOffline:
     # init deps
     auth_config = config.get("AUTH", {})
     token_config = config.get("TOKEN")
+
     authenticator_factory = AuthenticatorFactory()
     auth = authenticator_factory.make_authenticator(UOW, auth_config)
+
     jwt_config = JWTConfig(auth_config["jwt"])
     token_auth = TokenAuthenticator(UOW, jwt_config)
 
-    # JWT authenticator for /mfa/jwt endpoint (validates oauth2-proxy JWTs)
-    oauth_jwt_config = auth_config.get("oauth_jwt")
-    if oauth_jwt_config:
-        oauth_jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
-    else:
-        # Fallback to main auth if oauth_jwt not configured
-        oauth_jwt_auth = auth
+    # JWT authenticator for /mfa/jwt endpoint (always validates oauth2-proxy JWTs)
+    oauth_jwt_config = auth_config["oauth_jwt"]
+    oauth_jwt_auth = UserJWTAuthenticator(config=oauth_jwt_config, UOW=UOW)
 
     admin_token_auth = AdminTokenAuthenticator(UOW)
 
