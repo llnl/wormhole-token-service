@@ -58,6 +58,7 @@ class FakeOIDCAuthenticator:
 @define
 class FakeJWTAuthenticator:
     """Fake for UserJWTAuthenticator in tests."""
+
     config: dict
     UOW: Any  # Uppercase to match UserJWTAuthenticator signature
 

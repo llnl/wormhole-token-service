@@ -344,6 +344,7 @@ class BaseJWTAuthenticator:
     signature verification, and claims validation. Subclasses override
     __call__() to transform validated claims into domain objects.
     """
+
     config: dict
     jwks_url: str = field(kw_only=True)
     jwks_cache_ttl: int = field(kw_only=True)
@@ -446,6 +447,7 @@ class UserJWTAuthenticator(BaseJWTAuthenticator, BaseUserAuthDependency):
 
     Compatible with BaseUserAuthDependency for use in AuthenticatorFactory.
     """
+
     UOW: BaseUOW
 
     def __hash__(self):

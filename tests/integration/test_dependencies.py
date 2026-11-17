@@ -195,6 +195,7 @@ async def test_user_jwt_authenticator_raises_401_when_user_not_found(
         # Mock the user lookup to raise NotFound
         with mock.patch("token_service.dependencies.get_user") as mock_get_user:
             from token_service.services import NotFound
+
             mock_get_user.side_effect = NotFound("User not found")
 
             # Execute and Verify

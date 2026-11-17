@@ -97,7 +97,9 @@ def make_app(config: dict) -> FastAPIOffline:
         Endpoint(
             api_version, make_well_known_router(jwt_config.jwks), prefix="", versions=[]
         ),
-        Endpoint(api_version, make_mfa_router(UOW, oauth_jwt_auth, jwt_config, token_config)),
+        Endpoint(
+            api_version, make_mfa_router(UOW, oauth_jwt_auth, jwt_config, token_config)
+        ),
         Endpoint(api_version, make_config_router(auth, config)),
     ]
 
