@@ -44,6 +44,18 @@ class Token:
 
 
 @define(slots=False)
+class TokenAttestation:
+    """A user's attestation that a token is still needed, for one token cycle."""
+
+    attested_by: str
+    id: int = field(default=None)
+    token_id: str = field(default=None)
+    attested_at: pendulum.DateTime = field(factory=pendulum.now)
+    rotated_at: pendulum.DateTime = field(default=None)
+    renewed_at: pendulum.DateTime = field(default=None)
+
+
+@define(slots=False)
 class Group:
     name: str = field(default=None)
 

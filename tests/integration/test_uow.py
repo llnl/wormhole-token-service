@@ -1,5 +1,8 @@
+import pendulum
 import pytest
+from sqlalchemy import select
 
+from token_service import models
 from token_service.store.orm import make_engine, reset_db
 from token_service.service.uow import make_sql_uow
 
@@ -240,3 +243,85 @@ def test_removing_an_admin_token_deletes_associated_tokens(
         uow.admin_token_repo.remove(admin_token.id)
 
         assert not uow.token_repo.get(token.id)
+
+
+def _attestations(uow) -> list[models.TokenAttestation]:
+    return uow.session.execute(select(models.TokenAttestation)).scalars().all()
+
+
+def test_token_attestations_round_trip(UOW, make_token, make_user):
+    # Setup
+    token = make_token()
+    user = make_user()
+    now = pendulum.now()
+
+    with UOW() as uow:
+        user.tokens.append(token)
+        uow.user_repo.add(user)
+
+    # Execute
+    with UOW() as uow:
+        token = uow.token_repo.get(token.id)
+        token.attestations.append(
+            models.TokenAttestation(
+                attested_by=user.uid,
+                attested_at=now,
+                rotated_at=now.add(hours=1),
+            )
+        )
+        token.attestations.append(
+            models.TokenAttestation(
+                attested_by=user.uid, attested_at=now.subtract(days=30)
+            )
+        )
+
+    # Verify
+    with UOW() as uow:
+        old, current = uow.token_repo.get(token.id).attestations
+
+        assert old.attested_at == now.subtract(days=30)
+        assert old.rotated_at is None
+        assert current.token_id == token.id
+        assert current.attested_by == user.uid
+        assert current.attested_at == now
+        assert current.rotated_at == now.add(hours=1)
+        assert current.renewed_at is None
+
+
+def test_deleting_a_token_deletes_attestations(UOW, make_token, make_user):
+    # Setup
+    token = make_token()
+    user = make_user()
+    token.attestations.append(models.TokenAttestation(attested_by=user.uid))
+
+    with UOW() as uow:
+        user.tokens.append(token)
+        uow.user_repo.add(user)
+
+    # Execute
+    with UOW() as uow:
+        assert _attestations(uow)
+        uow.token_repo.remove(token.id)
+
+    # Verify
+    with UOW() as uow:
+        assert not _attestations(uow)
+
+
+def test_removing_a_user_deletes_token_attestations(UOW, make_token, make_user):
+    # Setup
+    token = make_token()
+    user = make_user()
+    token.attestations.append(models.TokenAttestation(attested_by=user.uid))
+
+    with UOW() as uow:
+        user.tokens.append(token)
+        uow.user_repo.add(user)
+
+    # Execute
+    with UOW() as uow:
+        uow.user_repo.remove(user.uid)
+
+    # Verify
+    with UOW() as uow:
+        assert not _attestations(uow)
