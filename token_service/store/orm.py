@@ -95,7 +95,6 @@ token_attestation_table = Table(
     Column("attested_by", String(32), nullable=False),
     Column("attested_at", PendulumDateTime(), nullable=False),
     Column("rotated_at", PendulumDateTime()),
-    Column("renewed_at", PendulumDateTime()),
 )
 
 audit_table = Table(

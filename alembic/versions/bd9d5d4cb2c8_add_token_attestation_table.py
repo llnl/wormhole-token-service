@@ -29,7 +29,6 @@ def upgrade() -> None:
         sa.Column('attested_by', sa.String(length=32), nullable=False),
         sa.Column('attested_at', PendulumDateTime(), nullable=False),
         sa.Column('rotated_at', PendulumDateTime(), nullable=True),
-        sa.Column('renewed_at', PendulumDateTime(), nullable=True),
         sa.ForeignKeyConstraint(['token_id'], ['token.id']),
         sa.PrimaryKeyConstraint('id'),
     )
