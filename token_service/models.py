@@ -48,7 +48,7 @@ class TokenAttestation:
     """A user's attestation that a token is still needed, for one token cycle."""
 
     attested_by: str
-    id: int = field(default=None)
+    id: str = field(factory=uuid.uuid4, converter=str)
     token_id: str = field(default=None)
     attested_at: pendulum.DateTime = field(factory=pendulum.now)
     rotated_at: pendulum.DateTime = field(default=None)

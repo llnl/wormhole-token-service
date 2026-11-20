@@ -24,12 +24,12 @@ def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
         'token_attestation',
-        sa.Column('id', sa.Integer(), sa.Identity()),
+        sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('token_id', sa.String(length=36), nullable=False),
         sa.Column('attested_by', sa.String(length=32), nullable=False),
         sa.Column('attested_at', PendulumDateTime(), nullable=False),
         sa.Column('rotated_at', PendulumDateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['token_id'], ['token.id']),
+        sa.ForeignKeyConstraint(['token_id'], ['token.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_index(

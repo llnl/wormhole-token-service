@@ -90,8 +90,14 @@ token_table = Table(
 token_attestation_table = Table(
     "token_attestation",
     mapper_registry.metadata,
-    Column("id", Integer, Identity(), primary_key=True),
-    Column("token_id", String(36), ForeignKey("token.id"), nullable=False, index=True),
+    Column("id", String(36), primary_key=True),
+    Column(
+        "token_id",
+        String(36),
+        ForeignKey("token.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    ),
     Column("attested_by", String(32), nullable=False),
     Column("attested_at", PendulumDateTime(), nullable=False),
     Column("rotated_at", PendulumDateTime()),
