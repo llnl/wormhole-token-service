@@ -87,6 +87,22 @@ token_table = Table(
     ),
 )
 
+token_attestation_table = Table(
+    "token_attestation",
+    mapper_registry.metadata,
+    Column("id", String(36), primary_key=True),
+    Column(
+        "token_id",
+        String(36),
+        ForeignKey("token.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    ),
+    Column("attested_by", String(32), nullable=False),
+    Column("attested_at", PendulumDateTime(), nullable=False),
+    Column("rotated_at", PendulumDateTime()),
+)
+
 audit_table = Table(
     "audit",
     mapper_registry.metadata,
@@ -164,9 +180,18 @@ mapper_registry.map_imperatively(
             back_populates="tokens",
             lazy="joined",
         ),
+        "attestations": relationship(
+            models.TokenAttestation,
+            cascade="all, delete-orphan",
+            order_by=token_attestation_table.c.attested_at,
+        ),
     },
 )
 
+mapper_registry.map_imperatively(
+    models.TokenAttestation,
+    token_attestation_table,
+)
 
 mapper_registry.map_imperatively(
     models.AuditRecord,
